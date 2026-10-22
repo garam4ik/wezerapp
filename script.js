@@ -45,10 +45,11 @@ const OBLAST_SLUGS = {
   "Чернігівська область": "chernihivska_oblast", "Чернігівська": "chernihivska_oblast"
 };
 
-let map, oblastLayer, raionOutlineLayer;
+let map, oblastLayer, raionOutlineLayer, districtPopup;
 let activeOblast = null;
 let selectedRaion = null;
 let districtRequestId = 0;
+const oblastWeatherCache = new Map();
 
 function normalize(s) {
   return String(s || "").toLocaleLowerCase("uk-UA")
@@ -86,8 +87,7 @@ function oblastStyle() {
 }
 
 function hideLoading() { $("map-loading").hidden = true; }
-function showModal() { $("district-modal").hidden = false; $("close-modal").focus(); }
-function closeModal() { $("district-modal").hidden = true; }
+function closeDistrictPopup() { if (map && districtPopup) map.closePopup(districtPopup); }
 
 function setUnknown(place, message = "Погодні дані недоступні.") {
   $("selected-region").textContent = place || "Невідомо";
@@ -105,18 +105,58 @@ function setUnknown(place, message = "Погодні дані недоступн
 
 function openOblastMenu(feature, layer) {
   activeOblast = { feature, layer, name: featureName(feature) };
-  $("dialog-title").textContent = displayOblastName(activeOblast.name);
-  $("dialog-subtitle").textContent = "Обери район зі списку, щоб переглянути погоду";
-  $("district-list").innerHTML = '<p class="muted">Завантажуємо райони області…</p>';
-  showModal();
-  loadDistricts(activeOblast.name);
+  const center = geometryCenter(feature);
+  const content = document.createElement("div");
+  content.className = "district-popover";
+  content.innerHTML = `<div class="district-popover-head"><strong></strong><button type="button" class="popup-close" aria-label="Закрити">×</button></div><p class="district-popover-subtitle">Обери район</p><div class="district-list popup-district-list"><p class="muted">Завантажуємо райони…</p></div>`;
+  content.querySelector("strong").textContent = displayOblastName(activeOblast.name);
+  content.querySelector(".popup-close").addEventListener("click", closeDistrictPopup);
+  districtPopup = L.popup({ closeButton: false, autoPan: true, maxWidth: 330, minWidth: 250, className: "district-leaflet-popup" })
+    .setLatLng(center || layer.getBounds().getCenter())
+    .setContent(content)
+    .openOn(map);
+  loadDistricts(activeOblast.name, content.querySelector(".popup-district-list"));
+}
+
+async function loadOblastWeather(feature, layer) {
+  const name = displayOblastName(featureName(feature));
+  const center = geometryCenter(feature);
+  if (!center) {
+    layer.setTooltipContent(`${name}<br><span class="tooltip-weather">Погода: невідомо</span>`);
+    return;
+  }
+  const cacheKey = name;
+  if (oblastWeatherCache.has(cacheKey)) {
+    layer.setTooltipContent(oblastWeatherCache.get(cacheKey));
+    return;
+  }
+  layer.setTooltipContent(`${name}<br><span class="tooltip-weather">Завантажуємо погоду…</span>`);
+  try {
+    const params = new URLSearchParams({ latitude: center[0], longitude: center[1], current: "temperature_2m,weather_code,wind_speed_10m", timezone: "Europe/Kyiv" });
+    const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, { cache: "no-store" });
+    if (!response.ok) throw new Error("Weather unavailable");
+    const data = await response.json();
+    const current = data.current;
+    if (!current || !Number.isFinite(current.temperature_2m)) throw new Error("No current weather");
+    const [condition, icon] = WEATHER_CODES[current.weather_code] || ["невідомо", "❔"];
+    const html = `${name}<br><span class="tooltip-weather">${icon} ${condition} · ${Math.round(current.temperature_2m)}°C<br>Вітер: ${Number.isFinite(current.wind_speed_10m) ? Math.round(current.wind_speed_10m) + " км/год" : "невідомо"}</span>`;
+    oblastWeatherCache.set(cacheKey, html);
+    layer.setTooltipContent(html);
+  } catch (_) {
+    const html = `${name}<br><span class="tooltip-weather">Погода: невідомо</span>`;
+    oblastWeatherCache.set(cacheKey, html);
+    layer.setTooltipContent(html);
+  }
 }
 
 function setupOblastFeature(feature, layer) {
   const name = featureName(feature);
-  layer.bindTooltip(displayOblastName(name), { sticky: true });
+  layer.bindTooltip(`${displayOblastName(name)}<br><span class="tooltip-weather">Наведи курсор для погоди</span>`, { sticky: true, direction: "top", opacity: 1 });
   layer.on({
-    mouseover: (e) => e.target.setStyle({ weight: 2.6, color: "#70e0c7", fillColor: "#1d3a43", fillOpacity: 0.55 }),
+    mouseover: (e) => {
+      e.target.setStyle({ weight: 2.6, color: "#70e0c7", fillColor: "#1d3a43", fillOpacity: 0.55 });
+      loadOblastWeather(feature, e.target);
+    },
     mouseout: (e) => oblastLayer && oblastLayer.resetStyle(e.target),
     click: () => openOblastMenu(feature, layer)
   });
@@ -150,11 +190,12 @@ function getRaionCenter(feature) {
   return geometryCenter(feature);
 }
 
-async function loadDistricts(oblastName) {
+async function loadDistricts(oblastName, targetList) {
   const requestId = ++districtRequestId;
+  const list = targetList || $("district-list");
   const slug = findOblastSlug(oblastName);
   if (!slug) {
-    $("district-list").innerHTML = '<p class="muted">Список районів для цієї області не знайдено. Спробуй іншу область.</p>';
+    list.innerHTML = '<p class="muted">Список районів не знайдено.</p>';
     return;
   }
 
@@ -167,26 +208,26 @@ async function loadDistricts(oblastName) {
     if (!features.length) throw new Error("Empty district list");
 
     features.sort((a, b) => featureName(a).localeCompare(featureName(b), "uk"));
-    $("district-list").innerHTML = "";
+    list.innerHTML = "";
     for (const feature of features) {
       const name = featureName(feature);
       const center = getRaionCenter(feature);
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "district-option";
+      button.className = "district-option popup-district-option";
       button.innerHTML = `<span></span><span aria-hidden="true">›</span>`;
       button.firstElementChild.textContent = name;
       button.addEventListener("click", () => {
         if (!center) setUnknown(`${displayOblastName(oblastName)} · ${name}`, "Не вдалося визначити координати району.");
         else loadWeather(displayOblastName(oblastName), name, center);
-        closeModal();
+        closeDistrictPopup();
       });
-      $("district-list").appendChild(button);
+      list.appendChild(button);
     }
   } catch (error) {
     console.warn("Не вдалося завантажити список районів:", error);
     if (requestId !== districtRequestId) return;
-    $("district-list").innerHTML = '<p class="muted">Не вдалося завантажити райони. Перевір інтернет-з’єднання та спробуй ще раз.</p>';
+    list.innerHTML = '<p class="muted">Не вдалося завантажити райони. Спробуй ще раз.</p>';
   }
 }
 
@@ -249,7 +290,7 @@ async function initMap() {
     // Райони показані лініями на всій карті; цей шар не перехоплює натискання.
     raionOutlineLayer = L.geoJSON(raions, {
       interactive: false,
-      style: { color: "#7189aa", weight: 0.85, opacity: 0.78, fillOpacity: 0 }
+      style: { color: "#8299b8", weight: 0.95, opacity: 0.9, fillOpacity: 0 }
     }).addTo(map);
 
     oblastLayer = L.geoJSON(oblasts, { style: oblastStyle, onEachFeature: setupOblastFeature }).addTo(map);
@@ -258,20 +299,14 @@ async function initMap() {
   } catch (error) {
     console.error(error);
     $("map-hint").textContent = "Не вдалося завантажити межі областей або районів";
-    $("district-list").innerHTML = '<p class="muted">Дані карти тимчасово недоступні.</p>';
+    console.warn("GeoJSON недоступний");
   } finally {
     $("map-loading").hidden = true;
     setTimeout(() => map.invalidateSize(), 100);
   }
 }
 
-$("close-modal").addEventListener("click", closeModal);
-$("district-modal").addEventListener("click", (event) => {
-  if (event.target === $("district-modal")) closeModal();
-});
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeModal();
-});
+document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeDistrictPopup(); });
 $("reset-map").addEventListener("click", () => {
   if (map && oblastLayer) map.fitBounds(oblastLayer.getBounds(), { padding: [15, 15] });
   activeOblast = null;

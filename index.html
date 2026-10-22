@@ -24,14 +24,14 @@
       <div>
         <p class="eyebrow">МЕТЕОКАРТА · УКРАЇНА</p>
         <h1>Погода по районах</h1>
-        <p class="subtitle">Обери область на карті, а потім район — щоб побачити прогноз.</p>
+        <p class="subtitle">Наведи курсор на область для короткої погоди. Натисни на неї, щоб обрати район.</p>
       </div>
       <div class="legend"><span class="legend-line"></span> Межі районів</div>
     </section>
 
     <section class="map-shell">
       <div class="map-toolbar">
-        <div class="map-state"><span class="pulse"></span><span id="map-hint">Натисни на область, щоб відкрити список районів</span></div>
+        <div class="map-state"><span class="pulse"></span><span id="map-hint">Наведи курсор для погоди · натисни область для вибору району</span></div>
         <button id="reset-map" class="secondary-button" type="button">⌖ Уся Україна</button>
       </div>
       <div class="map-wrap"><div id="map" aria-label="Інтерактивна карта України"></div>
@@ -61,12 +61,5 @@
     <footer class="footer"><span>WezeraApp · Погодні дані можуть затримуватися або бути недоступними.</span><a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Джерело погоди: Open-Meteo ↗</a></footer>
   </main>
 
-  <div class="modal-backdrop" id="district-modal" hidden>
-    <section class="district-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
-      <div class="dialog-header"><div><p class="eyebrow">ВИБІР ЛОКАЦІЇ</p><h2 id="dialog-title">Обери район</h2><p id="dialog-subtitle" class="dialog-subtitle">Список районів області</p></div><button id="close-modal" class="close-button" type="button" aria-label="Закрити">×</button></div>
-      <div id="district-list" class="district-list"><p class="muted">Завантаження районів…</p></div>
-      <p class="dialog-footnote">Погода розраховується для координат району, а не для кожної вулиці.</p>
-    </section>
-  </div>
 </body>
 </html>

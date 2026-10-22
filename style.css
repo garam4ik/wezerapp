@@ -98,3 +98,21 @@ h2 { margin: 0; font-size: 1.32rem; letter-spacing: -.025em; }
   .weather-main { padding: 21px; }
   .metric { padding: 11px; }
 }
+
+/* Compact district selector anchored to the clicked oblast (no full-screen modal). */
+.district-leaflet-popup .leaflet-popup-content-wrapper { padding: 0; border: 1px solid #34465d; border-radius: 12px; background: #0e1724; box-shadow: 0 14px 42px #0008; }
+.district-leaflet-popup .leaflet-popup-content { width: 290px !important; max-width: calc(100vw - 70px); margin: 0; }
+.district-leaflet-popup .leaflet-popup-tip { background: #0e1724; }
+.district-popover { overflow: hidden; color: var(--text); }
+.district-popover-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 13px 9px; border-bottom: 1px solid var(--line); }
+.district-popover-head strong { font-size: .9rem; }
+.popup-close { width: 25px; height: 25px; border: 1px solid #344357; border-radius: 6px; color: #dbe5f4; background: #172334; font-size: 1.1rem; line-height: 1; cursor: pointer; }
+.district-popover-subtitle { margin: 0; padding: 8px 13px 0; color: var(--muted); font-size: .72rem; }
+.popup-district-list { display: flex; flex-direction: column; gap: 5px; max-height: 245px; overflow: auto; padding: 8px; }
+.popup-district-option { min-height: 34px; padding: 7px 9px; border-radius: 7px; font-size: .76rem; }
+.tooltip-weather { display: inline-block; margin-top: 4px; color: #c8d6e8; font-size: 11px; line-height: 1.55; }
+.leaflet-tooltip { padding: 7px 9px; border-radius: 8px; }
+@media (max-width: 420px) {
+  .district-leaflet-popup .leaflet-popup-content { width: 260px !important; }
+  .popup-district-list { max-height: 210px; }
+}
