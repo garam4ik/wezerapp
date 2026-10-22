@@ -469,3 +469,24 @@ window.addEventListener("load", () => {
   if (typeof L === "undefined") { document.getElementById("map-loading").textContent = "Не вдалося завантажити бібліотеку карти."; return; }
   init();
 });
+
+
+// Show release notes once per version. Bump RELEASE_NOTES_VERSION for the next update.
+(function setupWhatsNew() {
+  const RELEASE_NOTES_VERSION = "2026-10-22-1";
+  const STORAGE_KEY = "wezeraapp-whats-new-seen";
+  function initWhatsNew() {
+    const modal = document.getElementById("whats-new");
+    const ok = document.getElementById("whats-new-ok");
+    if (!modal || !ok) return;
+    let seen = "";
+    try { seen = localStorage.getItem(STORAGE_KEY) || ""; } catch (_) {}
+    if (seen !== RELEASE_NOTES_VERSION) modal.hidden = false;
+    ok.addEventListener("click", () => {
+      modal.hidden = true;
+      try { localStorage.setItem(STORAGE_KEY, RELEASE_NOTES_VERSION); } catch (_) {}
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initWhatsNew);
+  else initWhatsNew();
+})();

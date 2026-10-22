@@ -56,3 +56,15 @@ body { font-family: Arial, sans-serif; }
 .settlement-row > span:first-child { display: flex; flex-direction: column; gap: 3px; }
 .settlement-type { color: #9da8b6; font-size: 11px; }
 .settlement-row[hidden] { display: none; }
+
+
+/* What's new dialog: shown once per release version */
+.whats-new[hidden] { display: none !important; }
+.whats-new { position: fixed; inset: 0; z-index: 20000; display: grid; place-items: center; padding: 18px; background: rgba(0,0,0,.78); }
+.whats-new-card { width: min(440px, 100%); padding: 24px; color: #f4f6f8; background: #171b22; border: 1px solid #343b47; border-radius: 14px; box-shadow: 0 18px 60px rgba(0,0,0,.6); }
+.whats-new-kicker { color: #f5a0a0; font-size: 11px; font-weight: 700; letter-spacing: .14em; }
+.whats-new-card h2 { margin: 10px 0 14px; font-size: 24px; }
+.whats-new-card ul { padding-left: 21px; margin: 0 0 22px; color: #d7dce4; line-height: 1.55; }
+.whats-new-card li + li { margin-top: 8px; }
+#whats-new-ok { width: 100%; padding: 11px 16px; color: #fff; background: #343b47; border: 1px solid #505969; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+#whats-new-ok:hover { background: #414a59; }
