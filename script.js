@@ -454,6 +454,10 @@ function init() {
     districtItems.forEach(item => { item.oblast = findOblastForDistrict(item.feature); item.layer.setStyle(baseStyle(item.oblast || item.feature)); });
     // Draw only oblast boundaries that remain on the map.
     L.geoJSON({ ...oblasts, features: oblastFeatures }, { pane: "oblastPane", interactive: false, style: feature => ({ color: "#252b35", weight: 0.9, opacity: 1, fill: false }) }).addTo(map);
+    // User-painted red territories exported from admin.html.
+    fetch("red-territories.geojson", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(data => {
+      if (data && data.features && data.features.length) L.geoJSON(data, { interactive: false, style: { color: "#f04444", weight: 0.2, fillColor: "#f04444", fillOpacity: 0.82 } }).addTo(map);
+    }).catch(() => {});
     addOblastLabels();
     const bounds = districtLayer.getBounds();
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [12, 12] });

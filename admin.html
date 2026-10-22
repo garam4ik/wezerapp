@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#11151b">
   <title>Адмінка — WezeraApp</title>
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="admin.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <script src="admin.js" defer></script>
 </head>
 <body>
@@ -26,6 +27,12 @@
         <div class="actions"><button type="submit">Завантажити файл оновлень</button><button id="reset" class="secondary" type="button">Скинути зміни</button></div>
       </form>
       <div id="status" class="status" role="status" hidden></div>
+      <hr><p class="eyebrow">МАЛЮВАННЯ ЧЕРВОНИХ ТЕРИТОРІЙ</p><h2>Карта для малювання</h2>
+      <p class="muted">Вибери «Пензель» і проведи мишкою по карті. «Гумка» стирає намальовані мазки. Після експорту завантаж файл red-territories.geojson у корінь GitHub-репозиторію.</p>
+      <div class="draw-tools"><button type="button" id="brush-tool">🔴 Пензель</button><button type="button" class="secondary" id="eraser-tool">⌫ Гумка</button><label for="brush-size">Розмір пензля</label><input id="brush-size" type="range" min="5" max="80" value="24"></div>
+      <div id="draw-map" aria-label="Карта для малювання червоних територій"></div>
+      <div class="actions"><button type="button" id="undo-stroke" class="secondary">Скасувати мазок</button><button type="button" id="clear-drawing" class="secondary">Очистити все</button><button type="button" id="export-drawing">Завантажити червоні території</button></div>
+      <p id="draw-status" class="status" role="status">Малювання готове. Пензель активний.</p>
       <div class="instructions"><strong>Як опублікувати оновлення</strong><ol><li>Натисни «Завантажити файл оновлень» — збережеться <code>release-notes.json</code>.</li><li>Завантаж цей файл у корінь репозиторію GitHub замість старого файлу з такою самою назвою.</li><li>Дочекайся завершення GitHub Pages deployment. Відвідувачам нове вікно з'явиться один раз для нової версії.</li></ol></div>
       <p class="warning"><strong>Важливо про безпеку:</strong> GitHub Pages — статичний хостинг. Цей парольний екран — лише простий бар'єр у браузері, а не справжня серверна авторизація; пароль можна знайти у вихідному коді. Не використовуй тут секретний пароль, який захищає інші акаунти. Для реального захисту потрібен зовнішній сервіс авторизації/сервер.</p>
     </section>
