@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Актуальна погода в містах України">
+  <title>WezeraApp — Погода в Україні</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="WezeraApp — головна">
+      <span class="brand-icon">☀</span><span>wezera<span class="brand-light">app</span></span>
+    </a>
+    <span class="header-tag">Погода в Україні</span>
+  </header>
+
+  <main class="container">
+    <section class="intro">
+      <p class="eyebrow">ПОГОДА ЗАРАЗ</p>
+      <h1>Погода в Україні</h1>
+      <p class="subtitle">Актуальні погодні умови у твоєму місті.</p>
+    </section>
+
+    <section class="toolbar" aria-label="Вибір міста">
+      <label for="city-select">Обери місто</label>
+      <select id="city-select">
+        <option value="kyiv">Київ</option>
+        <option value="lviv">Львів</option>
+        <option value="odesa">Одеса</option>
+        <option value="kharkiv">Харків</option>
+        <option value="dnipro">Дніпро</option>
+        <option value="zaporizhzhia">Запоріжжя</option>
+        <option value="vinnytsia">Вінниця</option>
+        <option value="chernivtsi">Чернівці</option>
+        <option value="uzhhorod">Ужгород</option>
+        <option value="poltava">Полтава</option>
+        <option value="chernihiv">Чернігів</option>
+        <option value="sumy">Суми</option>
+        <option value="mykolaiv">Миколаїв</option>
+        <option value="ternopil">Тернопіль</option>
+        <option value="ivano-frankivsk">Івано-Франківськ</option>
+      </select>
+      <button id="refresh-btn" type="button">↻ Оновити</button>
+    </section>
+
+    <p id="status" class="status" role="status" aria-live="polite">Завантажуємо погоду…</p>
+
+    <section class="weather-card" aria-label="Поточна погода">
+      <div class="weather-top">
+        <div>
+          <p class="city-label" id="city-name">Київ, Україна</p>
+          <p class="date-label" id="local-date">—</p>
+        </div>
+        <span class="weather-icon" id="weather-icon" aria-hidden="true">🌤️</span>
+      </div>
+      <div class="temperature-line">
+        <span id="temperature">--</span><span class="degrees">°C</span>
+      </div>
+      <p class="condition" id="condition">Отримуємо дані…</p>
+      <p class="feels-like">Відчувається як <strong id="feels-like">--°C</strong></p>
+      <div class="details-grid">
+        <article class="detail">
+          <span class="detail-icon">💧</span>
+          <span class="detail-label">Вологість</span>
+          <strong id="humidity">--%</strong>
+        </article>
+        <article class="detail">
+          <span class="detail-icon">💨</span>
+          <span class="detail-label">Швидкість вітру</span>
+          <strong id="wind">-- км/год</strong>
+        </article>
+        <article class="detail">
+          <span class="detail-icon">🌧️</span>
+          <span class="detail-label">Опади</span>
+          <strong id="precipitation">-- мм</strong>
+        </article>
+        <article class="detail">
+          <span class="detail-icon">☁️</span>
+          <span class="detail-label">Хмарність</span>
+          <strong id="cloud-cover">--%</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="forecast-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">НАСТУПНІ ГОДИНИ</p>
+          <h2>Прогноз на 6 годин</h2>
+        </div>
+        <span class="forecast-note">За даними погодної моделі</span>
+      </div>
+      <div id="hourly-forecast" class="hourly-grid">
+        <p class="empty-state">Прогноз завантажується…</p>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <span id="last-updated">Останнє оновлення: —</span>
+      <span>Дані: <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a></span>
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,84 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b1020;
+  --panel: #131c31;
+  --panel-light: #1b2942;
+  --text: #f4f7ff;
+  --muted: #aab7ce;
+  --accent: #8b9cff;
+  --accent-2: #63d8cb;
+  --border: rgba(204, 218, 255, .13);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 80% 0%, #202e58 0, transparent 42%), var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.site-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 22px max(5vw, 20px); border-bottom: 1px solid var(--border);
+}
+.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 800; font-size: 1.2rem; }
+.brand-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; background: linear-gradient(135deg, #8b9cff, #5bd8ca); color: #11182a; }
+.brand-light { color: var(--accent); }
+.header-tag { color: var(--muted); font-size: .9rem; }
+.container { width: min(960px, 90%); margin: 0 auto; }
+.intro { padding: 46px 0 24px; }
+.eyebrow { margin: 0 0 9px; color: var(--accent-2); font-size: .72rem; font-weight: 800; letter-spacing: .16em; }
+h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.3rem); letter-spacing: -.04em; }
+.subtitle { margin: 12px 0 0; color: var(--muted); }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 12px 0 10px; }
+.toolbar label { color: var(--muted); font-size: .9rem; }
+select, button { min-height: 44px; border: 1px solid var(--border); border-radius: 12px; font: inherit; }
+select { flex: 1; min-width: 180px; padding: 0 14px; color: var(--text); background: var(--panel); }
+button { padding: 0 17px; color: #11182a; background: var(--accent-2); border-color: transparent; font-weight: 750; cursor: pointer; }
+button:hover { filter: brightness(1.08); }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.status { min-height: 22px; color: var(--muted); font-size: .85rem; }
+.weather-card { padding: clamp(22px, 5vw, 38px); border: 1px solid var(--border); border-radius: 26px; background: linear-gradient(145deg, rgba(35, 51, 86, .95), rgba(17, 26, 46, .96)); box-shadow: 0 22px 70px rgba(0,0,0,.22); }
+.weather-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.city-label { margin: 0 0 7px; font-size: 1.2rem; font-weight: 750; }
+.date-label { margin: 0; color: var(--muted); font-size: .9rem; }
+.weather-icon { font-size: clamp(3rem, 8vw, 5rem); line-height: 1; }
+.temperature-line { display: flex; align-items: flex-start; margin-top: 22px; font-size: clamp(4.5rem, 15vw, 7.5rem); font-weight: 750; letter-spacing: -.08em; line-height: 1; }
+.degrees { margin: 10px 0 0 7px; color: var(--muted); font-size: clamp(1.7rem, 5vw, 2.5rem); letter-spacing: 0; }
+.condition { margin: 12px 0 5px; font-size: 1.2rem; font-weight: 650; }
+.feels-like { margin: 0; color: var(--muted); }
+.feels-like strong { color: var(--text); }
+.details-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 32px; }
+.detail { display: grid; gap: 7px; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: rgba(5, 11, 24, .22); }
+.detail-icon { font-size: 1.25rem; }
+.detail-label { color: var(--muted); font-size: .8rem; }
+.detail strong { font-size: 1.05rem; }
+.forecast-section { margin: 38px 0 28px; }
+.section-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 16px; }
+h2 { margin: 0; font-size: 1.5rem; letter-spacing: -.025em; }
+.forecast-note { color: var(--muted); font-size: .78rem; text-align: right; }
+.hourly-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.hour-card { padding: 16px 8px; text-align: center; border: 1px solid var(--border); border-radius: 16px; background: var(--panel); }
+.hour-time { color: var(--muted); font-size: .8rem; }
+.hour-icon { margin: 12px 0; font-size: 1.5rem; }
+.hour-temp { font-size: 1.15rem; font-weight: 750; }
+.hour-rain { margin-top: 8px; color: var(--accent-2); font-size: .75rem; }
+.empty-state { color: var(--muted); }
+.site-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 20px 0 30px; border-top: 1px solid var(--border); color: var(--muted); font-size: .82rem; }
+.site-footer a { color: var(--accent); }
+@media (max-width: 650px) {
+  .site-header { padding: 16px 5%; }
+  .header-tag { font-size: .75rem; text-align: right; }
+  .intro { padding-top: 32px; }
+  .details-grid { grid-template-columns: repeat(2, 1fr); }
+  .hourly-grid { grid-template-columns: repeat(3, 1fr); }
+  .section-heading { align-items: flex-start; flex-direction: column; }
+  .forecast-note { text-align: left; }
+}
+@media (max-width: 380px) {
+  .toolbar { align-items: stretch; }
+  .toolbar label { width: 100%; }
+  .toolbar button { width: 100%; }
+  .hourly-grid { gap: 7px; }
+  .hour-card { padding: 13px 5px; }
+}
