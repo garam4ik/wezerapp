@@ -135,9 +135,9 @@ function isRedOblast(feature) {
     .some(alias => name.includes(normalize(alias)));
 }
 function baseStyle(feature) {
-  return isRedOblast(feature) || (feature && districtItems.some(item => item.feature === feature && item.oblast && isRedOblast(item.oblast)))
-    ? { color: "#a94b4b", weight: 1.2, opacity: 1, fillColor: "#f3a0a0", fillOpacity: 1 }
-    : { color: "#252b35", weight: 0.9, opacity: 1, fillColor: "#3b414d", fillOpacity: 1 };
+  const red = isRedOblast(feature) || (feature && districtItems.some(item => item.feature === feature && item.oblast && isRedOblast(item.oblast)));
+  // Keep the exact same dark outline used by ordinary districts; only the fill changes.
+  return { color: "#252b35", weight: 0.9, opacity: 1, fillColor: red ? "#f3a0a0" : "#3b414d", fillOpacity: 1 };
 }
 function activeStyle(item) {
   return item.oblast && isRedOblast(item.oblast)
@@ -453,7 +453,7 @@ function init() {
     const districtLayer = L.geoJSON(filteredRaions, { style: baseStyle, onEachFeature: bindDistrict }).addTo(map);
     districtItems.forEach(item => { item.oblast = findOblastForDistrict(item.feature); item.layer.setStyle(baseStyle(item.oblast || item.feature)); });
     // Draw only oblast boundaries that remain on the map.
-    L.geoJSON({ ...oblasts, features: oblastFeatures }, { pane: "oblastPane", interactive: false, style: feature => ({ color: "#fff", weight: 1.8, opacity: 1, fill: false }) }).addTo(map);
+    L.geoJSON({ ...oblasts, features: oblastFeatures }, { pane: "oblastPane", interactive: false, style: feature => ({ color: "#252b35", weight: 0.9, opacity: 1, fill: false }) }).addTo(map);
     addOblastLabels();
     const bounds = districtLayer.getBounds();
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [12, 12] });
