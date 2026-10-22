@@ -55,7 +55,9 @@ const EXCLUDED_OBLAST_NAMES = [
   "крим", "crimea", "ар крим", "автономна республіка крим", "автономная республика крым",
   "севастополь", "севатополь", "sevastopol",
   "донецька", "донецкая", "donetsk",
-  "луганська", "луганская", "luhansk", "lugansk"
+  "луганська", "луганская", "luhansk", "lugansk",
+  "запорізька", "запорожская", "zaporizhzhia", "zaporizhya", "zaporozhye",
+  "херсонська", "херсонская", "kherson"
 ];
 function isExcludedOblastName(value) {
   const name = normalize(value);
