@@ -1,131 +1,262 @@
-const CITIES = {
-  kyiv: { name: "Київ", latitude: 50.4501, longitude: 30.5234 },
-  lviv: { name: "Львів", latitude: 49.8397, longitude: 24.0297 },
-  odesa: { name: "Одеса", latitude: 46.4825, longitude: 30.7233 },
-  kharkiv: { name: "Харків", latitude: 49.9935, longitude: 36.2304 },
-  dnipro: { name: "Дніпро", latitude: 48.4647, longitude: 35.0462 },
-  zaporizhzhia: { name: "Запоріжжя", latitude: 47.8388, longitude: 35.1396 },
-  vinnytsia: { name: "Вінниця", latitude: 49.2331, longitude: 28.4682 },
-  chernivtsi: { name: "Чернівці", latitude: 48.2921, longitude: 25.9358 },
-  uzhhorod: { name: "Ужгород", latitude: 48.6208, longitude: 22.2879 },
-  poltava: { name: "Полтава", latitude: 49.5883, longitude: 34.5514 },
-  chernihiv: { name: "Чернігів", latitude: 51.4982, longitude: 31.2893 },
-  sumy: { name: "Суми", latitude: 50.9077, longitude: 34.7981 },
-  mykolaiv: { name: "Миколаїв", latitude: 46.975, longitude: 31.9946 },
-  ternopil: { name: "Тернопіль", latitude: 49.5535, longitude: 25.5948 },
-  "ivano-frankivsk": { name: "Івано-Франківськ", latitude: 48.9226, longitude: 24.7111 }
+// Інтерактивна карта використовує межі областей у GeoJSON та погоду Open-Meteo.
+const GEOJSON_URL = "https://raw.githubusercontent.com/EugeneBorshch/ukraine_geojson/master/UA_FULL_Ukraine.geojson";
+const $ = (id) => document.getElementById(id);
+
+const weatherNames = {
+  0: ["Ясно", "☀️"], 1: ["Переважно ясно", "🌤️"], 2: ["Мінлива хмарність", "⛅"],
+  3: ["Хмарно", "☁️"], 45: ["Туман", "🌫️"], 48: ["Туман", "🌫️"],
+  51: ["Мряка", "🌦️"], 53: ["Мряка", "🌦️"], 55: ["Сильна мряка", "🌧️"],
+  56: ["Крижана мряка", "🌧️"], 57: ["Крижана мряка", "🌧️"],
+  61: ["Невеликий дощ", "🌦️"], 63: ["Дощ", "🌧️"], 65: ["Сильний дощ", "🌧️"],
+  66: ["Крижаний дощ", "🌧️"], 67: ["Крижаний дощ", "🌧️"],
+  71: ["Невеликий сніг", "🌨️"], 73: ["Сніг", "🌨️"], 75: ["Сильний сніг", "❄️"],
+  77: ["Снігові зерна", "🌨️"], 80: ["Короткочасний дощ", "🌦️"],
+  81: ["Зливи", "🌧️"], 82: ["Сильні зливи", "🌧️"], 85: ["Снігові заряди", "🌨️"],
+  86: ["Сильні снігові заряди", "❄️"], 95: ["Гроза", "⛈️"],
+  96: ["Гроза з градом", "⛈️"], 99: ["Сильна гроза з градом", "⛈️"]
 };
 
-const $ = (id) => document.getElementById(id);
-const citySelect = $("city-select");
-const refreshButton = $("refresh-btn");
-let activeController = null;
+// Назви англійською та українською — для зіставлення властивостей GeoJSON.
+const REGION_ALIASES = {
+  "vinnytska": ["Vinnytsia", "Vinnytska", "Вінницька"],
+  "volynska": ["Volyn", "Volynska", "Волинська"],
+  "dnipropetrovska": ["Dnipropetrovsk", "Dnipropetrovska", "Дніпропетровська", "Дніпропетровська область"],
+  "donetska": ["Donetsk", "Donetska", "Донецька"],
+  "zhytomyrska": ["Zhytomyr", "Zhytomyrska", "Житомирська"],
+  "zakarpatska": ["Zakarpattia", "Zakarpatska", "Transcarpathian", "Закарпатська"],
+  "zaporizka": ["Zaporizhzhia", "Zaporizka", "Запорізька"],
+  "ivano-frankivska": ["Ivano-Frankivsk", "Ivano Frankivsk", "Ivano-Frankivska", "Івано-Франківська"],
+  "kyivska": ["Kyiv Oblast", "Kyivska", "Київська"],
+  "kirovohradska": ["Kirovohrad", "Kirovohradska", "Кіровоградська"],
+  "krymska": ["Crimea", "Autonomous Republic of Crimea", "Автономна Республіка Крим", "Крим"],
+  "lvivska": ["Lviv", "Lvivska", "Львівська"],
+  "mykolaivska": ["Mykolaiv", "Mykolaivska", "Миколаївська"],
+  "odeska": ["Odesa", "Odessa", "Odeska", "Одеська"],
+  "poltavska": ["Poltava", "Poltavska", "Полтавська"],
+  "rivnenska": ["Rivne", "Rivnenska", "Рівненська"],
+  "sumska": ["Sumy", "Sumska", "Сумська"],
+  "ternopilska": ["Ternopil", "Ternopilska", "Тернопільська"],
+  "kharkivska": ["Kharkiv", "Kharkivska", "Харківська"],
+  "khersonska": ["Kherson", "Khersonska", "Херсонська"],
+  "khmelnytska": ["Khmelnytskyi", "Khmelnytska", "Хмельницька"],
+  "cherkaska": ["Cherkasy", "Cherkaska", "Черкаська"],
+  "chernivetska": ["Chernivtsi", "Chernivetska", "Чернівецька"],
+  "chernihivska": ["Chernihiv", "Chernihivska", "Чернігівська"],
+  "kyiv-city": ["Kyiv City", "Kyiv", "місто Київ", "м. Київ"],
+  "sevastopol": ["Sevastopol", "Севастополь"]
+};
 
-function describeWeather(code) {
-  if (code === 0) return ["Ясно", "☀️"];
-  if (code === 1) return ["Переважно ясно", "🌤️"];
-  if (code === 2) return ["Мінлива хмарність", "⛅"];
-  if (code === 3) return ["Хмарно", "☁️"];
-  if ([45, 48].includes(code)) return ["Туман", "🌫️"];
-  if ([51, 53, 55, 56, 57].includes(code)) return ["Мряка", "🌦️"];
-  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return ["Дощ", "🌧️"];
-  if ([71, 73, 75, 77, 85, 86].includes(code)) return ["Сніг", "🌨️"];
-  if ([95, 96, 99].includes(code)) return ["Гроза", "⛈️"];
-  return ["Змінна погода", "🌡️"];
+const REGION_CENTERS = {
+  "vinnytska": [49.2331, 28.4682], "volynska": [50.7472, 25.3254],
+  "dnipropetrovska": [48.4647, 35.0462], "donetska": [48.0159, 37.8028],
+  "zhytomyrska": [50.2547, 28.6587], "zakarpatska": [48.6208, 22.2879],
+  "zaporizka": [47.8388, 35.1396], "ivano-frankivska": [48.9226, 24.7111],
+  "kyivska": [50.4501, 30.5234], "kirovohradska": [48.5079, 32.2623],
+  "krymska": [44.9521, 34.1024], "lvivska": [49.8397, 24.0297],
+  "mykolaivska": [46.975, 31.9946], "odeska": [46.4825, 30.7233],
+  "poltavska": [49.5883, 34.5514], "rivnenska": [50.6199, 26.2516],
+  "sumska": [50.9077, 34.7981], "ternopilska": [49.5535, 25.5948],
+  "kharkivska": [49.9935, 36.2304], "khersonska": [46.6354, 32.6169],
+  "khmelnytska": [49.4229, 26.9871], "cherkaska": [49.4444, 32.0598],
+  "chernivetska": [48.2921, 25.9358], "chernihivska": [51.4982, 31.2893],
+  "kyiv-city": [50.4501, 30.5234], "sevastopol": [44.6167, 33.5254]
+};
+
+let map;
+let geoLayer;
+let selectedLayer = null;
+let selectedRegion = null;
+
+function normalize(value) {
+  return String(value || "").toLowerCase()
+    .replace(/oblast|region|область|обл\.?/g, "")
+    .replace(/[’'`]/g, "")
+    .replace(/[^a-zа-яіїєґ0-9]+/g, "");
 }
 
-function numberOrDash(value, suffix = "") {
-  return Number.isFinite(value) ? `${Math.round(value)}${suffix}` : `—${suffix}`;
+function featureProperties(feature) {
+  return feature && feature.properties ? feature.properties : {};
 }
 
-function formatTime(value) {
-  return new Intl.DateTimeFormat("uk-UA", {
-    hour: "2-digit", minute: "2-digit", timeZone: "Europe/Kyiv"
-  }).format(new Date(value));
+function featureName(feature) {
+  const p = featureProperties(feature);
+  const candidates = [p.name, p.NAME_1, p.NAME, p.name_1, p.shapeName, p.NAME_UK, p.name_uk, p.admin1Name, p.region];
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "Невідома область";
 }
 
-function renderHourly(data) {
-  const times = data.hourly.time;
-  const currentTime = data.current.time;
-  let start = times.findIndex((time) => time >= currentTime);
-  if (start < 0) start = 0;
-
-  const cards = times.slice(start, start + 6).map((time, offset) => {
-    const i = start + offset;
-    const [description, icon] = describeWeather(data.hourly.weather_code[i]);
-    const rainChance = data.hourly.precipitation_probability?.[i];
-    return `
-      <article class="hour-card" aria-label="${formatTime(time)}, ${description}">
-        <div class="hour-time">${i === start ? "Зараз" : formatTime(time)}</div>
-        <div class="hour-icon" aria-hidden="true">${icon}</div>
-        <div class="hour-temp">${numberOrDash(data.hourly.temperature_2m[i], "°")}</div>
-        <div class="hour-rain">${Number.isFinite(rainChance) ? `Опади ${rainChance}%` : "Прогноз"}</div>
-      </article>`;
-  });
-  $("hourly-forecast").innerHTML = cards.join("");
+function findRegionKey(name) {
+  const n = normalize(name);
+  for (const [key, aliases] of Object.entries(REGION_ALIASES)) {
+    if (aliases.some(alias => normalize(alias) === n)) return key;
+  }
+  // Дозволяємо зіставлення, якщо у властивості є додаткове слово.
+  for (const [key, aliases] of Object.entries(REGION_ALIASES)) {
+    if (aliases.some(alias => n.includes(normalize(alias)) || normalize(alias).includes(n))) return key;
+  }
+  return null;
 }
 
-async function loadWeather() {
-  const city = CITIES[citySelect.value] || CITIES.kyiv;
-  if (activeController) activeController.abort();
-  activeController = new AbortController();
+function getFeatureCenter(feature, key) {
+  if (key && REGION_CENTERS[key]) return REGION_CENTERS[key];
+  // Запасний варіант: центр меж області, якщо назву не вдалося зіставити.
+  const bounds = L.geoJSON(feature).getBounds();
+  if (bounds.isValid()) {
+    const center = bounds.getCenter();
+    return [center.lat, center.lng];
+  }
+  return null;
+}
 
-  $("status").textContent = "Оновлюємо погодні дані…";
-  refreshButton.disabled = true;
+function styleFeature(feature) {
+  return {
+    color: "#f5f8ff",
+    weight: 1.4,
+    opacity: 1,
+    fillColor: "#7894c9",
+    fillOpacity: 0.58
+  };
+}
 
-  const params = new URLSearchParams({
-    latitude: city.latitude,
-    longitude: city.longitude,
-    current: [
-      "temperature_2m", "relative_humidity_2m", "apparent_temperature",
-      "is_day", "precipitation", "weather_code", "cloud_cover", "wind_speed_10m"
-    ].join(","),
-    hourly: "temperature_2m,weather_code,precipitation_probability",
-    timezone: "Europe/Kyiv",
-    forecast_days: "2"
-  });
+function highlightFeature(event) {
+  const layer = event.target;
+  layer.setStyle({ weight: 2.5, color: "#ffffff", fillColor: "#72e0d1", fillOpacity: 0.85 });
+  if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) layer.bringToFront();
+}
 
-  try {
-    const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, {
-      signal: activeController.signal,
-      cache: "no-store"
-    });
-    if (!response.ok) throw new Error(`Помилка сервера: ${response.status}`);
-    const data = await response.json();
-    const current = data.current;
-    const [description, icon] = describeWeather(current.weather_code);
-
-    $("city-name").textContent = `${city.name}, Україна`;
-    $("local-date").textContent = new Intl.DateTimeFormat("uk-UA", {
-      weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Kyiv"
-    }).format(new Date(current.time));
-    $("weather-icon").textContent = icon;
-    $("temperature").textContent = numberOrDash(current.temperature_2m);
-    $("condition").textContent = description;
-    $("feels-like").textContent = numberOrDash(current.apparent_temperature, "°C");
-    $("humidity").textContent = numberOrDash(current.relative_humidity_2m, "%");
-    $("wind").textContent = numberOrDash(current.wind_speed_10m, " км/год");
-    $("precipitation").textContent = numberOrDash(current.precipitation, " мм");
-    $("cloud-cover").textContent = numberOrDash(current.cloud_cover, "%");
-    renderHourly(data);
-
-    $("last-updated").textContent = `Оновлено: ${new Intl.DateTimeFormat("uk-UA", {
-      hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Kyiv"
-    }).format(new Date())}`;
-    $("status").textContent = "Дані успішно оновлено.";
-  } catch (error) {
-    if (error.name === "AbortError") return;
-    $("status").textContent = "Не вдалося завантажити погоду. Перевір інтернет і спробуй ще раз.";
-    $("condition").textContent = "Дані тимчасово недоступні";
-    console.error("Weather API error:", error);
-  } finally {
-    refreshButton.disabled = false;
+function resetHighlight(event) {
+  if (geoLayer) geoLayer.resetStyle(event.target);
+  if (selectedLayer === event.target) {
+    selectedLayer.setStyle({ weight: 2.8, color: "#ffffff", fillColor: "#72e0d1", fillOpacity: 0.85 });
   }
 }
 
-citySelect.addEventListener("change", loadWeather);
-refreshButton.addEventListener("click", loadWeather);
+function onEachFeature(feature, layer) {
+  const name = featureName(feature);
+  layer.bindTooltip(name, { sticky: true, className: "oblast-label" });
+  layer.on({
+    mouseover: highlightFeature,
+    mouseout: resetHighlight,
+    click: () => selectRegion(feature, layer, name)
+  });
+}
 
-// API може оновлювати модель рідше, ніж раз на хвилину; інтерфейс повторно запитує дані щохвилини.
-loadWeather();
-setInterval(loadWeather, 60_000);
+function setUnknown(name, message = "Для цієї області погодні дані недоступні.") {
+  $("region-name").textContent = name || "Невідома область";
+  $("weather-icon").textContent = "❔";
+  $("weather-status").textContent = message;
+  $("temperature").textContent = "невідомо";
+  $("condition").textContent = "невідомо";
+  $("feels-like").textContent = "невідомо";
+  $("humidity").textContent = "невідомо";
+  $("wind").textContent = "невідомо";
+  $("rain").textContent = "невідомо";
+  $("updated-at").textContent = "Оновлення: невідомо";
+}
+
+function selectRegion(feature, layer, name) {
+  if (selectedLayer && geoLayer) geoLayer.resetStyle(selectedLayer);
+  selectedLayer = layer;
+  selectedLayer.setStyle({ weight: 2.8, color: "#ffffff", fillColor: "#72e0d1", fillOpacity: 0.85 });
+  if (selectedLayer.bringToFront) selectedLayer.bringToFront();
+
+  const key = findRegionKey(name);
+  const center = getFeatureCenter(feature, key);
+  selectedRegion = { name, key, center };
+  $("refresh-weather").disabled = false;
+
+  if (!center || !Number.isFinite(center[0]) || !Number.isFinite(center[1])) {
+    setUnknown(name);
+    return;
+  }
+  loadWeather(name, center);
+}
+
+function weatherDescription(code) {
+  return weatherNames[code] || ["невідомо", "❔"];
+}
+
+async function loadWeather(name, center) {
+  $("weather-status").textContent = "Завантажуємо погоду…";
+  $("region-name").textContent = name;
+  $("refresh-weather").disabled = true;
+
+  const [latitude, longitude] = center;
+  const params = new URLSearchParams({
+    latitude, longitude,
+    current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m",
+    timezone: "Europe/Kyiv"
+  });
+
+  try {
+    const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    const current = data.current;
+    if (!current || !Number.isFinite(current.temperature_2m)) throw new Error("No current weather data");
+
+    const [condition, icon] = weatherDescription(current.weather_code);
+    $("weather-icon").textContent = icon;
+    $("weather-status").textContent = "Поточні умови за координатами області";
+    $("temperature").textContent = Math.round(current.temperature_2m);
+    $("condition").textContent = condition;
+    $("feels-like").textContent = Number.isFinite(current.apparent_temperature) ? `${Math.round(current.apparent_temperature)}°C` : "невідомо";
+    $("humidity").textContent = Number.isFinite(current.relative_humidity_2m) ? `${current.relative_humidity_2m}%` : "невідомо";
+    $("wind").textContent = Number.isFinite(current.wind_speed_10m) ? `${Math.round(current.wind_speed_10m)} км/год` : "невідомо";
+    $("rain").textContent = Number.isFinite(current.precipitation) ? `${current.precipitation} мм` : "невідомо";
+    $("updated-at").textContent = `Оновлено: ${new Intl.DateTimeFormat("uk-UA", { hour: "2-digit", minute: "2-digit" }).format(new Date())}`;
+  } catch (error) {
+    console.warn("Weather data unavailable:", error);
+    setUnknown(name, "Не вдалося отримати погодні дані.");
+  } finally {
+    $("refresh-weather").disabled = !selectedRegion;
+  }
+}
+
+function initMap() {
+  map = L.map("map", { zoomControl: true, scrollWheelZoom: false }).setView([48.8, 31.2], 6);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 12,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>'
+  }).addTo(map);
+
+  fetch(GEOJSON_URL)
+    .then(response => {
+      if (!response.ok) throw new Error("Не вдалося завантажити межі областей");
+      return response.json();
+    })
+    .then(geojson => {
+      geoLayer = L.geoJSON(geojson, { style: styleFeature, onEachFeature }).addTo(map);
+      map.fitBounds(geoLayer.getBounds(), { padding: [12, 12] });
+    })
+    .catch(error => {
+      console.error(error);
+      $("weather-status").textContent = "Не вдалося завантажити карту областей. Перевір інтернет-з'єднання.";
+      $("region-name").textContent = "Карта недоступна";
+    });
+}
+
+$("reset-map").addEventListener("click", () => {
+  if (geoLayer) map.fitBounds(geoLayer.getBounds(), { padding: [12, 12] });
+  if (selectedLayer && geoLayer) geoLayer.resetStyle(selectedLayer);
+  selectedLayer = null;
+  selectedRegion = null;
+  $("refresh-weather").disabled = true;
+  setUnknown("Обери область", "Натисни на область на карті.");
+  $("temperature").textContent = "—";
+  $("condition").textContent = "Погода ще не завантажена";
+});
+
+$("refresh-weather").addEventListener("click", () => {
+  if (selectedRegion) loadWeather(selectedRegion.name, selectedRegion.center);
+});
+
+window.addEventListener("load", () => {
+  if (typeof L === "undefined") {
+    $("weather-status").textContent = "Не вдалося завантажити бібліотеку карти. Перевір інтернет-з'єднання.";
+    return;
+  }
+  initMap();
+});

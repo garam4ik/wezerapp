@@ -3,104 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Актуальна погода в містах України">
-  <title>WezeraApp — Погода в Україні</title>
+  <meta name="description" content="Інтерактивна карта України з погодою в областях">
+  <title>WezeraApp — Карта погоди України</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
   <script src="script.js" defer></script>
 </head>
 <body>
-  <header class="site-header">
-    <a class="brand" href="#" aria-label="WezeraApp — головна">
-      <span class="brand-icon">☀</span><span>wezera<span class="brand-light">app</span></span>
-    </a>
-    <span class="header-tag">Погода в Україні</span>
+  <header class="topbar">
+    <a class="brand" href="#"><span class="brand-mark">☀</span> wezera<span class="brand-accent">app</span></a>
+    <span class="topbar-label">Інтерактивна карта погоди</span>
   </header>
 
-  <main class="container">
+  <main class="layout">
     <section class="intro">
-      <p class="eyebrow">ПОГОДА ЗАРАЗ</p>
-      <h1>Погода в Україні</h1>
-      <p class="subtitle">Актуальні погодні умови у твоєму місті.</p>
+      <p class="eyebrow">ПОГОДА В РЕАЛЬНОМУ ЧАСІ</p>
+      <h1>Карта погоди України</h1>
+      <p>Натисни на область, щоб переглянути актуальні погодні умови.</p>
     </section>
 
-    <section class="toolbar" aria-label="Вибір міста">
-      <label for="city-select">Обери місто</label>
-      <select id="city-select">
-        <option value="kyiv">Київ</option>
-        <option value="lviv">Львів</option>
-        <option value="odesa">Одеса</option>
-        <option value="kharkiv">Харків</option>
-        <option value="dnipro">Дніпро</option>
-        <option value="zaporizhzhia">Запоріжжя</option>
-        <option value="vinnytsia">Вінниця</option>
-        <option value="chernivtsi">Чернівці</option>
-        <option value="uzhhorod">Ужгород</option>
-        <option value="poltava">Полтава</option>
-        <option value="chernihiv">Чернігів</option>
-        <option value="sumy">Суми</option>
-        <option value="mykolaiv">Миколаїв</option>
-        <option value="ternopil">Тернопіль</option>
-        <option value="ivano-frankivsk">Івано-Франківськ</option>
-      </select>
-      <button id="refresh-btn" type="button">↻ Оновити</button>
-    </section>
-
-    <p id="status" class="status" role="status" aria-live="polite">Завантажуємо погоду…</p>
-
-    <section class="weather-card" aria-label="Поточна погода">
-      <div class="weather-top">
-        <div>
-          <p class="city-label" id="city-name">Київ, Україна</p>
-          <p class="date-label" id="local-date">—</p>
+    <div class="content-grid">
+      <section class="map-panel" aria-label="Інтерактивна карта України">
+        <div class="map-toolbar">
+          <span><span class="live-dot"></span> Обери область на карті</span>
+          <button id="reset-map" type="button">Показати всю Україну</button>
         </div>
-        <span class="weather-icon" id="weather-icon" aria-hidden="true">🌤️</span>
-      </div>
-      <div class="temperature-line">
-        <span id="temperature">--</span><span class="degrees">°C</span>
-      </div>
-      <p class="condition" id="condition">Отримуємо дані…</p>
-      <p class="feels-like">Відчувається як <strong id="feels-like">--°C</strong></p>
-      <div class="details-grid">
-        <article class="detail">
-          <span class="detail-icon">💧</span>
-          <span class="detail-label">Вологість</span>
-          <strong id="humidity">--%</strong>
-        </article>
-        <article class="detail">
-          <span class="detail-icon">💨</span>
-          <span class="detail-label">Швидкість вітру</span>
-          <strong id="wind">-- км/год</strong>
-        </article>
-        <article class="detail">
-          <span class="detail-icon">🌧️</span>
-          <span class="detail-label">Опади</span>
-          <strong id="precipitation">-- мм</strong>
-        </article>
-        <article class="detail">
-          <span class="detail-icon">☁️</span>
-          <span class="detail-label">Хмарність</span>
-          <strong id="cloud-cover">--%</strong>
-        </article>
-      </div>
-    </section>
+        <div id="map" role="application" aria-label="Карта областей України"></div>
+        <p class="map-credit">Карта: OpenStreetMap · Межі областей: GeoJSON</p>
+      </section>
 
-    <section class="forecast-section">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">НАСТУПНІ ГОДИНИ</p>
-          <h2>Прогноз на 6 годин</h2>
+      <aside class="weather-panel" aria-live="polite">
+        <div class="panel-heading">
+          <span class="weather-symbol" id="weather-icon">🌤️</span>
+          <div>
+            <p class="eyebrow">ПОГОДА В ОБЛАСТІ</p>
+            <h2 id="region-name">Обери область</h2>
+          </div>
         </div>
-        <span class="forecast-note">За даними погодної моделі</span>
-      </div>
-      <div id="hourly-forecast" class="hourly-grid">
-        <p class="empty-state">Прогноз завантажується…</p>
-      </div>
-    </section>
-
-    <footer class="site-footer">
-      <span id="last-updated">Останнє оновлення: —</span>
-      <span>Дані: <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a></span>
-    </footer>
+        <p id="weather-status" class="weather-status">Натисни на область на карті.</p>
+        <div class="temperature-row">
+          <span id="temperature">—</span><span class="degree">°C</span>
+        </div>
+        <p id="condition" class="condition">Погода ще не завантажена</p>
+        <div class="weather-details">
+          <div class="detail"><span>Відчувається як</span><strong id="feels-like">—</strong></div>
+          <div class="detail"><span>Вологість</span><strong id="humidity">—</strong></div>
+          <div class="detail"><span>Вітер</span><strong id="wind">—</strong></div>
+          <div class="detail"><span>Опади</span><strong id="rain">—</strong></div>
+        </div>
+        <button id="refresh-weather" class="refresh-button" type="button" disabled>↻ Оновити погоду</button>
+        <p class="updated" id="updated-at">Оновлення: —</p>
+        <p class="source">Дані погоди: <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a></p>
+      </aside>
+    </div>
+    <footer>Погодні дані можуть бути недоступні для окремих територій. У такому разі сайт покаже «невідомо».</footer>
   </main>
 </body>
 </html>
