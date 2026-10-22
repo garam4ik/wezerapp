@@ -53,8 +53,7 @@ function centerOf(feature) {
 }
 const EXCLUDED_OBLAST_NAMES = [
   "севастополь", "севатополь", "sevastopol",
-  "донецька", "донецкая", "donetsk",
-  // Крим, Луганська, Запорізька та Херсонська області залишаються на карті.
+  // Донецька область повернута на карту; Крим, Луганська, Запорізька та Херсонська також залишаються.
 ];
 function isExcludedOblastName(value) {
   const name = normalize(value);
@@ -132,7 +131,7 @@ function findOblastForDistrict(feature) {
 }
 function isRedOblast(feature) {
   const name = normalize(getName(feature, "oblast"));
-  return ["запорізька", "запорожская", "zaporizhzhia", "zaporizhya", "zaporozhye", "херсонська", "херсонская", "kherson", "луганська", "луганская", "luhansk", "lugansk", "крим", "crimea", "ар крим", "автономна республіка крим", "автономная республика крым"]
+  return ["запорізька", "запорожская", "zaporizhzhia", "zaporizhya", "zaporozhye", "херсонська", "херсонская", "kherson", "луганська", "луганская", "luhansk", "lugansk", "донецька", "донецкая", "donetsk", "крим", "crimea", "ар крим", "автономна республіка крим", "автономная республика крым"]
     .some(alias => name.includes(normalize(alias)));
 }
 function baseStyle(feature) {
@@ -454,7 +453,7 @@ function init() {
     const districtLayer = L.geoJSON(filteredRaions, { style: baseStyle, onEachFeature: bindDistrict }).addTo(map);
     districtItems.forEach(item => { item.oblast = findOblastForDistrict(item.feature); item.layer.setStyle(baseStyle(item.oblast || item.feature)); });
     // Draw only oblast boundaries that remain on the map.
-    L.geoJSON({ ...oblasts, features: oblastFeatures }, { pane: "oblastPane", interactive: false, style: feature => isRedOblast(feature) ? { color: "#8f3030", weight: 3, opacity: 1, fill: false } : { color: "#fff", weight: 1.8, opacity: 1, fill: false } }).addTo(map);
+    L.geoJSON({ ...oblasts, features: oblastFeatures }, { pane: "oblastPane", interactive: false, style: feature => ({ color: "#fff", weight: 1.8, opacity: 1, fill: false }) }).addTo(map);
     addOblastLabels();
     const bounds = districtLayer.getBounds();
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [12, 12] });
