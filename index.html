@@ -3,61 +3,70 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Інтерактивна карта України з погодою в областях">
-  <title>WezeraApp — Карта погоди України</title>
+  <meta name="theme-color" content="#080d16">
+  <meta name="description" content="Інтерактивна карта України з межами районів і прогнозом погоди">
+  <title>WezeraApp — Погода України</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <script src="script.js" defer></script>
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#"><span class="brand-mark">☀</span> wezera<span class="brand-accent">app</span></a>
-    <span class="topbar-label">Інтерактивна карта погоди</span>
+    <a class="brand" href="#" aria-label="WezeraApp — головна">
+      <span class="brand-mark">W</span><span>wezera<span class="brand-accent">app</span></span>
+    </a>
+    <div class="topbar-right"><span class="live-pill"><i></i> LIVE WEATHER</span><span class="topbar-label">Україна</span></div>
   </header>
 
-  <main class="layout">
+  <main class="page">
     <section class="intro">
-      <p class="eyebrow">ПОГОДА В РЕАЛЬНОМУ ЧАСІ</p>
-      <h1>Карта погоди України</h1>
-      <p>Натисни на область, щоб переглянути актуальні погодні умови.</p>
+      <div>
+        <p class="eyebrow">МЕТЕОКАРТА · УКРАЇНА</p>
+        <h1>Погода по районах</h1>
+        <p class="subtitle">Обери область на карті, а потім район — щоб побачити прогноз.</p>
+      </div>
+      <div class="legend"><span class="legend-line"></span> Межі районів</div>
     </section>
 
-    <div class="content-grid">
-      <section class="map-panel" aria-label="Інтерактивна карта України">
-        <div class="map-toolbar">
-          <span><span class="live-dot"></span> Обери область на карті</span>
-          <button id="reset-map" type="button">Показати всю Україну</button>
-        </div>
-        <div id="map" role="application" aria-label="Карта областей України"></div>
-        <p class="map-credit">Карта: OpenStreetMap · Межі областей: GeoJSON</p>
-      </section>
+    <section class="map-shell">
+      <div class="map-toolbar">
+        <div class="map-state"><span class="pulse"></span><span id="map-hint">Натисни на область, щоб відкрити список районів</span></div>
+        <button id="reset-map" class="secondary-button" type="button">⌖ Уся Україна</button>
+      </div>
+      <div class="map-wrap"><div id="map" aria-label="Інтерактивна карта України"></div>
+        <div class="map-loading" id="map-loading"><span class="spinner"></span><span>Завантаження карти…</span></div>
+      </div>
+      <div class="map-footer"><span>Межі: адміністративні дані GeoJSON</span><span>Погода: Open-Meteo</span></div>
+    </section>
 
-      <aside class="weather-panel" aria-live="polite">
-        <div class="panel-heading">
-          <span class="weather-symbol" id="weather-icon">🌤️</span>
-          <div>
-            <p class="eyebrow">ПОГОДА В ОБЛАСТІ</p>
-            <h2 id="region-name">Обери область</h2>
-          </div>
+    <section class="weather-section">
+      <div class="section-title"><div><p class="eyebrow">ПОТОЧНІ УМОВИ</p><h2>Погода в обраному районі</h2></div><span id="updated-at" class="updated-at">Оновлено: —</span></div>
+      <div class="weather-card" id="weather-card">
+        <div class="weather-main">
+          <div class="weather-place"><span class="weather-icon" id="weather-icon">☁️</span><div><p id="selected-region" class="place-label">Область і район не вибрано</p><p id="weather-condition" class="condition">Обери область на карті</p></div></div>
+          <div class="temperature"><span id="temperature">—</span><span class="degrees">°C</span></div>
+          <p class="feels-like">Відчувається як <strong id="feels-like">—</strong></p>
         </div>
-        <p id="weather-status" class="weather-status">Натисни на область на карті.</p>
-        <div class="temperature-row">
-          <span id="temperature">—</span><span class="degree">°C</span>
+        <div class="weather-metrics">
+          <div class="metric"><span class="metric-icon">💧</span><span class="metric-label">Вологість</span><strong id="humidity">—</strong></div>
+          <div class="metric"><span class="metric-icon">💨</span><span class="metric-label">Вітер</span><strong id="wind">—</strong></div>
+          <div class="metric"><span class="metric-icon">🌧️</span><span class="metric-label">Опади</span><strong id="precipitation">—</strong></div>
+          <div class="metric"><span class="metric-icon">☁️</span><span class="metric-label">Хмарність</span><strong id="cloud-cover">—</strong></div>
         </div>
-        <p id="condition" class="condition">Погода ще не завантажена</p>
-        <div class="weather-details">
-          <div class="detail"><span>Відчувається як</span><strong id="feels-like">—</strong></div>
-          <div class="detail"><span>Вологість</span><strong id="humidity">—</strong></div>
-          <div class="detail"><span>Вітер</span><strong id="wind">—</strong></div>
-          <div class="detail"><span>Опади</span><strong id="rain">—</strong></div>
-        </div>
-        <button id="refresh-weather" class="refresh-button" type="button" disabled>↻ Оновити погоду</button>
-        <p class="updated" id="updated-at">Оновлення: —</p>
-        <p class="source">Дані погоди: <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a></p>
-      </aside>
-    </div>
-    <footer>Погодні дані можуть бути недоступні для окремих територій. У такому разі сайт покаже «невідомо».</footer>
+      </div>
+      <p class="data-note" id="data-note">Після вибору району тут з’являться актуальні дані. Якщо дані недоступні, буде показано «невідомо».</p>
+    </section>
+
+    <footer class="footer"><span>WezeraApp · Погодні дані можуть затримуватися або бути недоступними.</span><a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Джерело погоди: Open-Meteo ↗</a></footer>
   </main>
+
+  <div class="modal-backdrop" id="district-modal" hidden>
+    <section class="district-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      <div class="dialog-header"><div><p class="eyebrow">ВИБІР ЛОКАЦІЇ</p><h2 id="dialog-title">Обери район</h2><p id="dialog-subtitle" class="dialog-subtitle">Список районів області</p></div><button id="close-modal" class="close-button" type="button" aria-label="Закрити">×</button></div>
+      <div id="district-list" class="district-list"><p class="muted">Завантаження районів…</p></div>
+      <p class="dialog-footnote">Погода розраховується для координат району, а не для кожної вулиці.</p>
+    </section>
+  </div>
 </body>
 </html>
