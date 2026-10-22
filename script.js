@@ -105,8 +105,8 @@ function findOblastForDistrict(feature) {
   // The majority-of-boundary-points test is resilient to a district's bounding-box centre falling outside its polygon.
   return bestScore > 0 ? best : null;
 }
-function baseStyle() { return { color: "#fff", weight: 0.85, opacity: 0.9, fillColor: "#000", fillOpacity: 0.001 }; }
-function activeStyle() { return { color: "#fff", weight: 2.6, opacity: 1, fillColor: "#fff", fillOpacity: 0.1 }; }
+function baseStyle() { return { color: "#252b35", weight: 0.9, opacity: 1, fillColor: "#3b414d", fillOpacity: 1 }; }
+function activeStyle() { return { color: "#fff", weight: 2.2, opacity: 1, fillColor: "#596273", fillOpacity: 1 }; }
 function refreshStyles() {
   for (const item of districtItems) {
     const active = item === hoveredItem;
