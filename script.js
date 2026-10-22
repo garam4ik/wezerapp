@@ -435,7 +435,7 @@ function init() {
   document.addEventListener("keydown", e => { if (e.key === "Escape") { document.getElementById("weather-panel").hidden = true; panelRequestSequence++; } });
   map = L.map("map", { zoomControl: false, attributionControl: false, scrollWheelZoom: true, doubleClickZoom: true, preferCanvas: false }).setView([48.8, 31.2], 6);
   map.createPane("oblastPane");
-  map.getPane("oblastPane").style.zIndex = 390;
+  map.getPane("oblastPane").style.zIndex = 430;
   map.getPane("overlayPane").style.zIndex = 410;
   Promise.all([fetch(OBLASTS_URL), fetch(RAIONS_URL)]).then(async ([or, rr]) => {
     if (!or.ok || !rr.ok) throw new Error("GeoJSON download failed");
@@ -454,7 +454,7 @@ function init() {
     const districtLayer = L.geoJSON(filteredRaions, { style: baseStyle, onEachFeature: bindDistrict }).addTo(map);
     districtItems.forEach(item => { item.oblast = findOblastForDistrict(item.feature); item.layer.setStyle(baseStyle(item.oblast || item.feature)); });
     // Draw only oblast boundaries that remain on the map.
-    L.geoJSON({ ...oblasts, features: oblastFeatures }, { pane: "oblastPane", interactive: false, style: feature => isRedOblast(feature) ? { color: "#8f3030", weight: 2.4, opacity: 1, fillColor: "#f3a0a0", fillOpacity: 0.75 } : { color: "#fff", weight: 1.8, opacity: 1, fill: false } }).addTo(map);
+    L.geoJSON({ ...oblasts, features: oblastFeatures }, { pane: "oblastPane", interactive: false, style: feature => isRedOblast(feature) ? { color: "#8f3030", weight: 3, opacity: 1, fill: false } : { color: "#fff", weight: 1.8, opacity: 1, fill: false } }).addTo(map);
     addOblastLabels();
     const bounds = districtLayer.getBounds();
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [12, 12] });
