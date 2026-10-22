@@ -51,6 +51,27 @@ function centerOf(feature) {
   try { const b = L.geoJSON(feature).getBounds(); if (b.isValid()) { const c = b.getCenter(); return [c.lat, c.lng]; } } catch (_) {}
   return null;
 }
+const EXCLUDED_OBLAST_NAMES = [
+  "крим", "crimea", "ар крим", "автономна республіка крим", "автономная республика крым",
+  "запорізька", "запорожская", "zaporizhzhia", "zaporizhia",
+  "донецька", "донецкая", "donetsk",
+  "луганська", "луганская", "luhansk", "lugansk"
+];
+function isExcludedOblastName(value) {
+  const name = normalize(value);
+  return EXCLUDED_OBLAST_NAMES.some(alias => name === normalize(alias) || name.startsWith(normalize(alias)) || name.includes(normalize(alias)));
+}
+function districtParentName(feature) {
+  const p = propsOf(feature);
+  const keys = ["oblast", "oblast_name", "region", "region_name", "adm1_name", "NAME_1", "name_1", "admin1Name", "parent_name", "raion_oblast", "oblastName"];
+  for (const key of keys) if (typeof p[key] === "string" && p[key].trim()) return p[key].trim();
+  return "";
+}
+function isInsideExcludedOblast(feature, excludedOblasts) {
+  const center = centerOf(feature);
+  if (!center) return false;
+  return excludedOblasts.some(oblast => pointInGeometry(center, oblast.geometry));
+}
 function pointInRing(point, ring) {
   const x = point[1], y = point[0]; let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -407,11 +428,21 @@ function init() {
   Promise.all([fetch(OBLASTS_URL), fetch(RAIONS_URL)]).then(async ([or, rr]) => {
     if (!or.ok || !rr.ok) throw new Error("GeoJSON download failed");
     const [oblasts, raions] = await Promise.all([or.json(), rr.json()]);
-    oblastFeatures = (oblasts.features || []).filter(f => f.geometry);
-    const districtLayer = L.geoJSON(raions, { style: baseStyle, onEachFeature: bindDistrict }).addTo(map);
+    const allOblastFeatures = (oblasts.features || []).filter(f => f.geometry);
+    const excludedOblasts = allOblastFeatures.filter(f => isExcludedOblastName(getName(f, "oblast")));
+    oblastFeatures = allOblastFeatures.filter(f => !isExcludedOblastName(getName(f, "oblast")));
+    const includedRaions = (raions.features || []).filter(feature => {
+      if (!feature.geometry) return false;
+      const parentName = districtParentName(feature);
+      if (parentName && isExcludedOblastName(parentName)) return false;
+      // Some source versions omit the parent oblast name, so also test the district's center.
+      return !isInsideExcludedOblast(feature, excludedOblasts);
+    });
+    const filteredRaions = { ...raions, features: includedRaions };
+    const districtLayer = L.geoJSON(filteredRaions, { style: baseStyle, onEachFeature: bindDistrict }).addTo(map);
     districtItems.forEach(item => { item.oblast = findOblastForDistrict(item.feature); });
-    // Boundaries of oblasts are drawn beneath districts; district polygons receive the mouse events.
-    L.geoJSON(oblasts, { pane: "oblastPane", interactive: false, style: { color: "#fff", weight: 1.8, opacity: 1, fill: false } }).addTo(map);
+    // Draw only oblast boundaries that remain on the map.
+    L.geoJSON({ ...oblasts, features: oblastFeatures }, { pane: "oblastPane", interactive: false, style: { color: "#fff", weight: 1.8, opacity: 1, fill: false } }).addTo(map);
     addOblastLabels();
     const bounds = districtLayer.getBounds();
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [12, 12] });
