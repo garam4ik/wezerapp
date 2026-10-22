@@ -56,8 +56,7 @@ const EXCLUDED_OBLAST_NAMES = [
   "севастополь", "севатополь", "sevastopol",
   "донецька", "донецкая", "donetsk",
   "луганська", "луганская", "luhansk", "lugansk",
-  "запорізька", "запорожская", "zaporizhzhia", "zaporizhya", "zaporozhye",
-  "херсонська", "херсонская", "kherson"
+  // Запорізька та Херсонська області залишаються на карті.
 ];
 function isExcludedOblastName(value) {
   const name = normalize(value);
@@ -133,12 +132,25 @@ function findOblastForDistrict(feature) {
   // The majority-of-boundary-points test is resilient to a district's bounding-box centre falling outside its polygon.
   return bestScore > 0 ? best : null;
 }
-function baseStyle() { return { color: "#252b35", weight: 0.9, opacity: 1, fillColor: "#3b414d", fillOpacity: 1 }; }
-function activeStyle() { return { color: "#fff", weight: 2.2, opacity: 1, fillColor: "#596273", fillOpacity: 1 }; }
+function isRedOblast(feature) {
+  const name = normalize(getName(feature, "oblast"));
+  return ["запорізька", "запорожская", "zaporizhzhia", "zaporizhya", "zaporozhye", "херсонська", "херсонская", "kherson"]
+    .some(alias => name.includes(normalize(alias)));
+}
+function baseStyle(feature) {
+  return isRedOblast(feature) || (feature && districtItems.some(item => item.feature === feature && item.oblast && isRedOblast(item.oblast)))
+    ? { color: "#f0a0a0", weight: 0.9, opacity: 1, fillColor: "#f3a0a0", fillOpacity: 1 }
+    : { color: "#252b35", weight: 0.9, opacity: 1, fillColor: "#3b414d", fillOpacity: 1 };
+}
+function activeStyle(item) {
+  return item.oblast && isRedOblast(item.oblast)
+    ? { color: "#fff", weight: 2.2, opacity: 1, fillColor: "#ffb5b5", fillOpacity: 1 }
+    : { color: "#fff", weight: 2.2, opacity: 1, fillColor: "#596273", fillOpacity: 1 };
+}
 function refreshStyles() {
   for (const item of districtItems) {
     const active = item === hoveredItem;
-    item.layer.setStyle(active ? activeStyle() : baseStyle());
+    item.layer.setStyle(active ? activeStyle(item) : baseStyle(item.feature));
   }
 }
 function escapeHtml(value) {
@@ -442,9 +454,9 @@ function init() {
     });
     const filteredRaions = { ...raions, features: includedRaions };
     const districtLayer = L.geoJSON(filteredRaions, { style: baseStyle, onEachFeature: bindDistrict }).addTo(map);
-    districtItems.forEach(item => { item.oblast = findOblastForDistrict(item.feature); });
+    districtItems.forEach(item => { item.oblast = findOblastForDistrict(item.feature); item.layer.setStyle(baseStyle(item.oblast || item.feature)); });
     // Draw only oblast boundaries that remain on the map.
-    L.geoJSON({ ...oblasts, features: oblastFeatures }, { pane: "oblastPane", interactive: false, style: { color: "#fff", weight: 1.8, opacity: 1, fill: false } }).addTo(map);
+    L.geoJSON({ ...oblasts, features: oblastFeatures }, { pane: "oblastPane", interactive: false, style: feature => isRedOblast(feature) ? { color: "#ffb0b0", weight: 1.8, opacity: 1, fillColor: "#f3a0a0", fillOpacity: 0.75 } : { color: "#fff", weight: 1.8, opacity: 1, fill: false } }).addTo(map);
     addOblastLabels();
     const bounds = districtLayer.getBounds();
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [12, 12] });
