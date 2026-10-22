@@ -53,7 +53,7 @@ function centerOf(feature) {
 }
 const EXCLUDED_OBLAST_NAMES = [
   "крим", "crimea", "ар крим", "автономна республіка крим", "автономная республика крым",
-  "запорізька", "запорожская", "zaporizhzhia", "zaporizhia",
+  "севастополь", "севатополь", "sevastopol",
   "донецька", "донецкая", "donetsk",
   "луганська", "луганская", "luhansk", "lugansk"
 ];
