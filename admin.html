@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#11151b">
+  <title>Адмінка — WezeraApp</title>
+  <link rel="stylesheet" href="admin.css">
+  <script src="admin.js" defer></script>
+</head>
+<body>
+  <main class="wrap">
+    <header class="top"><a href="index.html" class="brand">WezeraApp</a><span>ПАНЕЛЬ КЕРУВАННЯ</span></header>
+    <section id="login-card" class="card">
+      <p class="eyebrow">АДМІНІСТРАТОР</p><h1>Вхід в адмінку</h1>
+      <p class="muted">Уведи пароль, щоб відкрити редактор оновлень.</p>
+      <form id="login-form"><label for="password">Пароль адміністратора</label><input id="password" type="password" autocomplete="current-password" required><button type="submit">Увійти</button><p id="login-error" class="error" role="alert" hidden>Неправильний пароль.</p></form>
+    </section>
+    <section id="editor-card" class="card" hidden>
+      <div class="editor-head"><div><p class="eyebrow">КЕРУВАННЯ ОНОВЛЕННЯМИ</p><h1>Що нового?</h1></div><button id="logout" class="secondary" type="button">Вийти</button></div>
+      <p class="muted">Зміни версії та список пунктів, які побачать відвідувачі у вікні оновлення.</p>
+      <form id="notes-form">
+        <label for="version">Версія (зміни її під час кожного релізу)</label><input id="version" required placeholder="наприклад, 2026-10-23-1">
+        <label for="title">Заголовок вікна</label><input id="title" required>
+        <label for="items">Список змін — один пункт на рядок</label><textarea id="items" rows="7" required></textarea>
+        <div class="actions"><button type="submit">Завантажити файл оновлень</button><button id="reset" class="secondary" type="button">Скинути зміни</button></div>
+      </form>
+      <div id="status" class="status" role="status" hidden></div>
+      <div class="instructions"><strong>Як опублікувати оновлення</strong><ol><li>Натисни «Завантажити файл оновлень» — збережеться <code>release-notes.json</code>.</li><li>Завантаж цей файл у корінь репозиторію GitHub замість старого файлу з такою самою назвою.</li><li>Дочекайся завершення GitHub Pages deployment. Відвідувачам нове вікно з'явиться один раз для нової версії.</li></ol></div>
+      <p class="warning"><strong>Важливо про безпеку:</strong> GitHub Pages — статичний хостинг. Цей парольний екран — лише простий бар'єр у браузері, а не справжня серверна авторизація; пароль можна знайти у вихідному коді. Не використовуй тут секретний пароль, який захищає інші акаунти. Для реального захисту потрібен зовнішній сервіс авторизації/сервер.</p>
+    </section>
+    <footer>WezeraApp · Адміністративна панель</footer>
+  </main>
+</body>
+</html>

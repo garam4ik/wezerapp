@@ -471,20 +471,36 @@ window.addEventListener("load", () => {
 });
 
 
-// Show release notes once per version. Bump RELEASE_NOTES_VERSION for the next update.
+// Release notes are loaded from release-notes.json, which can be edited via admin.html.
 (function setupWhatsNew() {
-  const RELEASE_NOTES_VERSION = "2026-10-22-1";
   const STORAGE_KEY = "wezeraapp-whats-new-seen";
-  function initWhatsNew() {
+  async function initWhatsNew() {
     const modal = document.getElementById("whats-new");
     const ok = document.getElementById("whats-new-ok");
     if (!modal || !ok) return;
+    let notes = { version: "2026-10-22-1", title: "Що нового?", items: [] };
+    try {
+      const response = await fetch("release-notes.json", { cache: "no-store" });
+      if (response.ok) notes = await response.json();
+    } catch (_) {}
+    if (typeof notes.version !== "string" || !notes.version) notes.version = "unknown";
+    const title = document.getElementById("whats-new-title");
+    const list = document.getElementById("whats-new-list");
+    if (title && notes.title) title.textContent = notes.title;
+    if (list && Array.isArray(notes.items)) {
+      list.replaceChildren();
+      notes.items.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = String(item);
+        list.appendChild(li);
+      });
+    }
     let seen = "";
     try { seen = localStorage.getItem(STORAGE_KEY) || ""; } catch (_) {}
-    if (seen !== RELEASE_NOTES_VERSION) modal.hidden = false;
+    if (seen !== notes.version) modal.hidden = false;
     ok.addEventListener("click", () => {
       modal.hidden = true;
-      try { localStorage.setItem(STORAGE_KEY, RELEASE_NOTES_VERSION); } catch (_) {}
+      try { localStorage.setItem(STORAGE_KEY, notes.version); } catch (_) {}
     });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initWhatsNew);
