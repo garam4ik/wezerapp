@@ -1,6 +1,6 @@
 /* GitHub Pages is static: this client-side password is NOT secure authentication.
    Change it to a unique, non-sensitive passphrase before use. */
-const ADMIN_PASSWORD = "CHANGE_THIS_LOCAL_GATE_PASSWORD";
+const ADMIN_PASSWORD = "610624";
 const DEFAULT_NOTES = {
   version: "2026-10-22-1",
   title: "Що нового?",
