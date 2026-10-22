@@ -45,3 +45,14 @@ body { font-family: Arial, sans-serif; }
 .settlement-row .settlement-meta { color: #aab4c0; font-size: 12px; }
 .place-weather { margin-top: 12px; padding: 12px; border: 1px solid #64748b; border-radius: 9px; background: #15191e; }
 @media (max-width: 600px) { .weather-panel { top: 8px; right: 8px; bottom: 8px; width: min(100vw - 16px, 430px); } .panel-header { padding: 16px; } .panel-content { padding: 16px; } .oblast-label { font-size: 9px; } }
+
+/* All-district settlement directory */
+.settlement-search-label { display: block; margin: 8px 0 6px; color: #c6ced8; font-size: 12px; }
+.settlement-search { display: block; width: 100%; box-sizing: border-box; padding: 11px 12px; border-radius: 9px; border: 1px solid #46505d; background: #151a21; color: #f4f6f8; font: inherit; outline: none; }
+.settlement-search:focus { border-color: #dce5f0; box-shadow: 0 0 0 2px #ffffff18; }
+.settlement-count { margin: 8px 0; }
+.settlement-list { max-height: 280px; overflow: auto; padding-right: 3px; }
+.settlement-row { min-height: 44px; }
+.settlement-row > span:first-child { display: flex; flex-direction: column; gap: 3px; }
+.settlement-type { color: #9da8b6; font-size: 11px; }
+.settlement-row[hidden] { display: none; }

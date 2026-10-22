@@ -1,6 +1,7 @@
 const OBLASTS_URL = "https://raw.githubusercontent.com/slawomirmatuszak/ukrainian_geodata/master/regiony.geojson";
 const RAIONS_URL = "https://raw.githubusercontent.com/slawomirmatuszak/ukrainian_geodata/master/rayony.geojson";
 const WEATHER_URL = "https://api.open-meteo.com/v1/forecast";
+const SETTLEMENTS_URL = "https://raw.githubusercontent.com/bnotezz/ua-settlements/main/assets/data/settlements.json";
 const WEATHER_CODES = {
   0:"Ясно",1:"Переважно ясно",2:"Мінлива хмарність",3:"Хмарно",45:"Туман",48:"Туман",
   51:"Мряка",53:"Мряка",55:"Сильна мряка",56:"Крижана мряка",57:"Крижана мряка",
@@ -20,6 +21,8 @@ let panelRequestSequence = 0;
 const weatherCache = new Map();
 const weatherPending = new Map();
 const featureNames = new WeakMap();
+let settlementsPromise = null;
+let settlementsData = null;
 const districtTooltip = () => document.getElementById("district-tooltip");
 
 function propsOf(feature) { return feature?.properties || {}; }
@@ -224,7 +227,8 @@ function addOblastLabels() {
     const center = centerOf(feature);
     if (!center) continue;
     const name = getName(feature, "oblast")
-      .replace(/\s+область$/i, "")
+      .replace(/ область$/i, "ська")
+      .replace(/ область/i, "ська")
       .replace(/^м\.\s*/i, "м. ");
     const icon = L.divIcon({ className: "oblast-label-icon", html: `<div class="oblast-label">${escapeHtml(name)}</div>`, iconSize: [140, 22], iconAnchor: [70, 11] });
     const marker = L.marker(center, { icon, pane: "oblastLabelsPane", interactive: false, keyboard: false });
@@ -269,15 +273,81 @@ function renderWeatherData(data, target, prefix = "") {
   html += `</div>`;
   target.innerHTML = html;
 }
-const settlementsByDistrict = [
-  { match: /кропивницьк/i, places: [
-    { name: "Знам’янка", lat: 48.713, lon: 32.664 },
-    { name: "Суботці", lat: 48.657, lon: 32.537 },
-    { name: "Аджамка", lat: 48.542, lon: 32.535 }
-  ]}
-];
-function settlementsForDistrict(name) {
-  return settlementsByDistrict.find(item => item.match.test(name))?.places || [];
+async function loadSettlementsData() {
+  if (settlementsData) return settlementsData;
+  if (!settlementsPromise) {
+    settlementsPromise = fetch(SETTLEMENTS_URL, { cache: "force-cache" })
+      .then(response => { if (!response.ok) throw new Error("Settlement dataset unavailable"); return response.json(); })
+      .then(data => {
+        const rows = Array.isArray(data) ? data : (Array.isArray(data.settlements) ? data.settlements : []);
+        settlementsData = rows.filter(row => row && typeof row.name === "string" && Array.isArray(row.location) && row.location.length >= 2 && Number.isFinite(Number(row.location[0])) && Number.isFinite(Number(row.location[1])));
+        return settlementsData;
+      })
+      .catch(error => { settlementsPromise = null; throw error; });
+  }
+  return settlementsPromise;
+}
+function settlementIsPlace(row) {
+  const type = normalize(row.type || "");
+  // Keep actual populated places; exclude oblasts, districts, communities and other administrative records.
+  return /^(село|селище|місто|селищеміськоготипу|селоміськоготипу|village|town|city|hamlet|locality)$/.test(type) || ["C", "M", "X"].includes(String(row.category || "").toUpperCase());
+}
+function districtCode(feature) {
+  const p = propsOf(feature);
+  for (const key of ["katotth_id", "KATOTTH", "katottg", "KATOTTG", "district_id", "raion_id", "id", "code"]) {
+    const value = p[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number") return String(value);
+  }
+  return "";
+}
+async function settlementsForDistrict(feature) {
+  const rows = await loadSettlementsData();
+  const name = normalize(getName(feature, "district").replace(/район/ig, ""));
+  const code = districtCode(feature);
+  let matches = rows.filter(row => {
+    if (!settlementIsPlace(row)) return false;
+    const rowDistrict = normalize(row.district_name || "");
+    const rowCode = String(row.district_id || "");
+    if (code && rowCode && code === rowCode) return true;
+    return rowDistrict && (rowDistrict === name || normalize(rowDistrict.replace(/район/ig, "")) === name);
+  });
+  // Some boundary files do not carry KATOTTH codes or use a slightly different district label.
+  // In that case, locate settlements by their coordinates inside the selected district polygon.
+  if (!matches.length && feature?.geometry) {
+    matches = rows.filter(row => settlementIsPlace(row) && pointInGeometry([Number(row.location[1]), Number(row.location[0])], feature.geometry));
+  }
+  const unique = new Map();
+  for (const row of matches) {
+    const lon = Number(row.location[0]), lat = Number(row.location[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < 44 || lat > 53 || lon < 21 || lon > 41) continue;
+    const key = `${normalize(row.name)}:${lat.toFixed(4)}:${lon.toFixed(4)}`;
+    if (!unique.has(key)) unique.set(key, { name: row.name, lat, lon, type: row.type || "населений пункт" });
+  }
+  return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name, "uk"));
+}
+function renderSettlementList(places) {
+  if (!places.length) return `<p class="muted">Не вдалося завантажити список населених пунктів цього району. Перевірте підключення до інтернету або дані джерела.</p>`;
+  return `<label class="settlement-search-label" for="settlement-search">Пошук населеного пункту</label>
+    <input id="settlement-search" class="settlement-search" type="search" placeholder="Наприклад, Знам’янка або Суботці" autocomplete="off">
+    <p class="muted settlement-count">Населених пунктів: ${places.length}</p>
+    <div id="settlement-list" class="settlement-list">${places.map((place, i) => `<button class="settlement-row" type="button" data-place-index="${i}"><span><strong>${escapeHtml(place.name)}</strong><span class="settlement-type">${escapeHtml(place.type)}</span></span><span class="settlement-meta">Погода →</span></button>`).join("")}</div>
+    <div id="place-weather" class="place-weather" hidden></div>`;
+}
+function bindSettlementList(content, places) {
+  content.querySelectorAll("[data-place-index]").forEach(button => button.addEventListener("click", () => {
+    const place = places[Number(button.dataset.placeIndex)];
+    const box = content.querySelector("#place-weather");
+    if (place && box) showSettlementWeather(place, box);
+  }));
+  const search = content.querySelector("#settlement-search");
+  if (search) search.addEventListener("input", () => {
+    const q = normalize(search.value);
+    content.querySelectorAll("[data-place-index]").forEach(button => {
+      const place = places[Number(button.dataset.placeIndex)];
+      button.hidden = !!q && !normalize(place?.name).includes(q);
+    });
+  });
 }
 async function showSettlementWeather(place, box) {
   box.hidden = false;
@@ -295,30 +365,35 @@ async function openWeatherPanel(item) {
   panel.hidden = false;
   document.getElementById("panel-title").textContent = name;
   const seq = ++panelRequestSequence;
-  content.innerHTML = `<p class="muted">Завантаження поточної погоди та історії…</p>`;
+  content.innerHTML = `<p class="muted">Завантаження погоди та населених пунктів району…</p>`;
   const center = centerOf(item.feature);
-  const places = settlementsForDistrict(name);
-  let settlementsHtml = `<h2>Населені пункти</h2>`;
-  if (places.length) {
-    settlementsHtml += `<div class="settlement-list">${places.map((place, i) => `<button class="settlement-row" type="button" data-place-index="${i}"><span>${escapeHtml(place.name)}</span><span class="settlement-meta">Показати погоду →</span></button>`).join("")}</div><div id="place-weather" class="place-weather" hidden></div>`;
-  } else {
-    settlementsHtml += `<p class="muted">Список населених пунктів для цього району ще не додано.</p>`;
+  let places = [];
+  let placesHtml = `<h2>Населені пункти району</h2>`;
+  try {
+    places = await settlementsForDistrict(item.feature);
+    if (seq !== panelRequestSequence) return;
+    placesHtml += renderSettlementList(places);
+  } catch (error) {
+    console.warn("Could not load settlement list:", error);
+    placesHtml += `<p class="muted">Список населених пунктів тимчасово недоступний.</p>`;
   }
-  if (!center) { content.innerHTML = `<p class="muted">Не вдалося визначити координати району.</p>${settlementsHtml}`; return; }
+  if (!center) {
+    content.innerHTML = `<p class="muted">Не вдалося визначити координати району.</p>${placesHtml}`;
+    bindSettlementList(content, places);
+    return;
+  }
+  content.innerHTML = `<p class="muted">Завантаження поточної погоди та історії…</p>${placesHtml}`;
+  bindSettlementList(content, places);
   try {
     const data = await fetchWeatherAt(center[0], center[1], true);
     if (seq !== panelRequestSequence) return;
-    content.innerHTML = `<h2>Поточна погода</h2><div id="district-weather"></div>${settlementsHtml}`;
+    content.innerHTML = `<h2>Поточна погода в районі</h2><div id="district-weather"></div>${placesHtml}`;
     renderWeatherData(data, document.getElementById("district-weather"));
-    content.querySelectorAll("[data-place-index]").forEach(button => button.addEventListener("click", () => {
-      const place = places[Number(button.dataset.placeIndex)];
-      const box = document.getElementById("place-weather");
-      if (place && box) showSettlementWeather(place, box);
-    }));
+    bindSettlementList(content, places);
   } catch (_) {
     if (seq !== panelRequestSequence) return;
-    content.innerHTML = `<p class="muted">Не вдалося завантажити погоду. Показуємо «невідомо» для недоступних даних.</p>${settlementsHtml}`;
-    content.querySelectorAll("[data-place-index]").forEach(button => button.addEventListener("click", () => { const place = places[Number(button.dataset.placeIndex)]; const box = document.getElementById("place-weather"); if (place && box) showSettlementWeather(place, box); }));
+    content.innerHTML = `<p class="muted">Не вдалося завантажити погоду району. Недоступні значення позначаються як «невідомо».</p>${placesHtml}`;
+    bindSettlementList(content, places);
   }
 }
 
