@@ -116,3 +116,23 @@ h2 { margin: 0; font-size: 1.32rem; letter-spacing: -.025em; }
   .district-leaflet-popup .leaflet-popup-content { width: 260px !important; }
   .popup-district-list { max-height: 210px; }
 }
+
+
+/* Keyless OSM tiles with a dark treatment; only raster tiles are filtered. */
+.leaflet-tile-pane { filter: invert(100%) hue-rotate(180deg) brightness(82%) contrast(88%); }
+
+/* Permanent oblast labels, separate from polygons so they never intercept hover/click. */
+.oblast-label-icon { background: transparent; border: 0; pointer-events: none; }
+.oblast-label-icon span {
+  position: relative; display: block; transform: translate(-50%, -50%);
+  width: max-content; max-width: 125px; padding: 3px 6px; border: 1px solid #52708b88;
+  border-radius: 5px; color: #e6f0ff; background: #0b1423d9;
+  box-shadow: 0 2px 8px #0008; font-size: 10px; font-weight: 700;
+  line-height: 1.2; letter-spacing: .015em; text-align: center; white-space: nowrap;
+  text-shadow: 0 1px 2px #000; pointer-events: none;
+}
+.tooltip-oblast { color: #91a7c2; font-size: 10px; }
+.raion-weather-tooltip { border-color: #64f0d1; box-shadow: 0 0 0 1px #64f0d133, 0 8px 24px #0007; }
+@media (max-width: 680px) {
+  .oblast-label-icon span { padding: 2px 4px; font-size: 8px; max-width: 95px; }
+}

@@ -45,15 +45,17 @@ const OBLAST_SLUGS = {
   "Чернігівська область": "chernihivska_oblast", "Чернігівська": "chernihivska_oblast"
 };
 
-let map, oblastLayer, raionOutlineLayer, districtPopup;
+let map, oblastLayer, raionOutlineLayer, oblastLabelsLayer, districtPopup;
 let activeOblast = null;
 let selectedRaion = null;
 let districtRequestId = 0;
 const oblastWeatherCache = new Map();
+const raionWeatherCache = new Map();
+const raionWeatherPending = new Map();
 
 function normalize(s) {
   return String(s || "").toLocaleLowerCase("uk-UA")
-    .replace(/область|обл\\.?/g, "").replace(/[’'`]/g, "")
+    .replace(/область|обл\.?/g, "").replace(/[’'`]/g, "")
     .replace(/[^a-zа-яіїєґ0-9]/g, "");
 }
 
@@ -64,6 +66,26 @@ function featureName(feature) {
   const vals = [p.name, p.NAME_1, p.NAME_2, p.NAME, p.shapeName, p.NAME_UK, p.name_uk, p.admin2Name, p.admin1Name, p.region, p.raion, p.raion_name];
   for (const v of vals) if (typeof v === "string" && v.trim()) return v.trim();
   return "Невідомо";
+}
+
+function raionFeatureName(feature) {
+  const p = propsOf(feature);
+  const vals = [p.name, p.name_uk, p.raion_name, p.raionName, p.admin2Name, p.NAME_2, p.NAME_3, p.shapeName, p.NAME_UK, p.name_2, p.NAME_1, p.name_1];
+  for (const v of vals) if (typeof v === "string" && v.trim()) return v.trim();
+  return "Невідомий район";
+}
+
+function raionOblastName(feature) {
+  const p = propsOf(feature);
+  const vals = [p.oblast, p.oblast_name, p.region, p.region_name, p.admin1Name, p.NAME_1, p.name_1, p.NAME_0];
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim()) return displayOblastName(v.trim());
+  }
+  return "";
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
 }
 
 function displayOblastName(name) {
@@ -147,6 +169,119 @@ async function loadOblastWeather(feature, layer) {
     oblastWeatherCache.set(cacheKey, html);
     layer.setTooltipContent(html);
   }
+}
+
+async function loadRaionTooltipWeather(feature, layer) {
+  const name = raionFeatureName(feature);
+  const oblast = raionOblastName(feature);
+  const center = getRaionCenter(feature);
+  const cacheKey = `${normalize(oblast)}:${normalize(name)}`;
+  const tooltipHtml = (weather) => `${escapeHtml(name)}${oblast ? `<br><span class="tooltip-oblast">${escapeHtml(oblast)}</span>` : ""}<br><span class="tooltip-weather">${weather}</span>`;
+
+  if (raionWeatherCache.has(cacheKey)) {
+    layer.setTooltipContent(tooltipHtml(raionWeatherCache.get(cacheKey)));
+    return;
+  }
+  layer.setTooltipContent(tooltipHtml("Завантажуємо погоду…"));
+  if (!center) {
+    raionWeatherCache.set(cacheKey, "Погода: невідомо");
+    layer.setTooltipContent(tooltipHtml("Погода: невідомо"));
+    return;
+  }
+  if (raionWeatherPending.has(cacheKey)) {
+    try {
+      const result = await raionWeatherPending.get(cacheKey);
+      layer.setTooltipContent(tooltipHtml(result));
+    } catch (_) { layer.setTooltipContent(tooltipHtml("Погода: невідомо")); }
+    return;
+  }
+
+  const request = (async () => {
+    const params = new URLSearchParams({ latitude: center[0], longitude: center[1], current: "temperature_2m,weather_code,wind_speed_10m", timezone: "Europe/Kyiv" });
+    const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
+    if (!response.ok) throw new Error("Weather unavailable");
+    const data = await response.json();
+    const current = data.current;
+    if (!current || !Number.isFinite(current.temperature_2m)) throw new Error("No current weather");
+    const [condition, icon] = WEATHER_CODES[current.weather_code] || ["невідомо", "❔"];
+    return `${icon} ${condition} · ${Math.round(current.temperature_2m)}°C<br>Вітер: ${Number.isFinite(current.wind_speed_10m) ? Math.round(current.wind_speed_10m) + " км/год" : "невідомо"}`;
+  })();
+  raionWeatherPending.set(cacheKey, request);
+  try {
+    const result = await request;
+    raionWeatherCache.set(cacheKey, result);
+    layer.setTooltipContent(tooltipHtml(result));
+  } catch (_) {
+    raionWeatherCache.set(cacheKey, "Погода: невідомо");
+    layer.setTooltipContent(tooltipHtml("Погода: невідомо"));
+  } finally {
+    raionWeatherPending.delete(cacheKey);
+  }
+}
+
+function findParentOblastForRaion(feature) {
+  if (!oblastLayer) return null;
+  const parentName = normalize(raionOblastName(feature));
+  if (parentName) {
+    let found = null;
+    oblastLayer.eachLayer((layer) => {
+      if (normalize(displayOblastName(featureName(layer.feature))) === parentName || normalize(featureName(layer.feature)) === parentName) found = layer;
+    });
+    if (found) return found;
+  }
+  const center = getRaionCenter(feature);
+  if (!center) return null;
+  let found = null;
+  const point = L.latLng(center[0], center[1]);
+  oblastLayer.eachLayer((layer) => {
+    try { if (layer.getBounds().contains(point)) found = layer; } catch (_) {}
+  });
+  return found;
+}
+
+function setupRaionFeature(feature, layer) {
+  const name = raionFeatureName(feature);
+  const oblast = raionOblastName(feature);
+  layer.bindTooltip(`${escapeHtml(name)}<br><span class="tooltip-weather">Наведи курсор для погоди…</span>`, {
+    sticky: true, direction: "top", opacity: 1, className: "raion-weather-tooltip"
+  });
+  layer.on({
+    mouseover: (event) => {
+      event.target.setStyle({ color: "#64f0d1", weight: 2.8, opacity: 1, fillColor: "#1b655f", fillOpacity: 0.55 });
+      if (event.target.bringToFront) event.target.bringToFront();
+      loadRaionTooltipWeather(feature, event.target);
+    },
+    mouseout: (event) => {
+      if (raionOutlineLayer) raionOutlineLayer.resetStyle(event.target);
+    },
+    click: () => {
+      const parentLayer = findParentOblastForRaion(feature);
+      if (parentLayer) openOblastMenu(parentLayer.feature, parentLayer);
+      else {
+        const center = getRaionCenter(feature);
+        if (center) loadWeather(oblast || "Україна", name, center);
+      }
+    }
+  });
+}
+
+function addOblastLabels(oblasts) {
+  if (oblastLabelsLayer) map.removeLayer(oblastLabelsLayer);
+  oblastLabelsLayer = L.layerGroup();
+  for (const feature of (oblasts.features || [])) {
+    const fullName = displayOblastName(featureName(feature));
+    const shortName = fullName.replace(/ область$/, "");
+    const center = geometryCenter(feature);
+    if (!center) continue;
+    const icon = L.divIcon({
+      className: "oblast-label-icon",
+      html: `<span>${escapeHtml(shortName)}</span>`,
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    });
+    L.marker(center, { icon, interactive: false, keyboard: false, zIndexOffset: 1000 }).addTo(oblastLabelsLayer);
+  }
+  oblastLabelsLayer.addTo(map);
 }
 
 function setupOblastFeature(feature, layer) {
@@ -277,9 +412,11 @@ async function loadWeather(oblastName, raionName, center) {
 
 async function initMap() {
   map = L.map("map", { zoomControl: true, scrollWheelZoom: true }).setView([48.8, 31.2], 6);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-    subdomains: "abcd", maxZoom: 19,
-    attribution: '&copy; OpenStreetMap &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>'
+  // Standard OpenStreetMap tiles are free and do not require an API key.
+  // CSS darkens the raster layer while keeping labels and map controls legible.
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>'
   }).addTo(map);
 
   try {
@@ -287,15 +424,21 @@ async function initMap() {
     if (!oblastResponse.ok || !raionResponse.ok) throw new Error("Не вдалося завантажити GeoJSON");
     const [oblasts, raions] = await Promise.all([oblastResponse.json(), raionResponse.json()]);
 
-    // Райони показані лініями на всій карті; цей шар не перехоплює натискання.
+    // Області створюють базову геометрію та зберігають вибір меню при кліку на вільні ділянки.
+    oblastLayer = L.geoJSON(oblasts, { style: oblastStyle, onEachFeature: setupOblastFeature }).addTo(map);
+
+    // Райони — інтерактивний верхній шар: підсвічується лише район під курсором.
     raionOutlineLayer = L.geoJSON(raions, {
-      interactive: false,
-      style: { color: "#8299b8", weight: 0.95, opacity: 0.9, fillOpacity: 0 }
+      style: { color: "#8299b8", weight: 0.95, opacity: 0.9, fillColor: "#17263a", fillOpacity: 0.13 },
+      onEachFeature: setupRaionFeature
     }).addTo(map);
 
-    oblastLayer = L.geoJSON(oblasts, { style: oblastStyle, onEachFeature: setupOblastFeature }).addTo(map);
+    // Labels are separate non-interactive markers and stay visible above the polygons.
+    addOblastLabels(oblasts);
+    raionOutlineLayer.bringToFront();
+    if (oblastLabelsLayer) oblastLabelsLayer.eachLayer((label) => label.setZIndexOffset(1000));
     map.fitBounds(oblastLayer.getBounds(), { padding: [15, 15] });
-    $("map-hint").textContent = "Натисни на область, щоб відкрити список районів";
+    $("map-hint").textContent = "Наведи курсор на район для погоди · натисни на нього, щоб обрати район";
   } catch (error) {
     console.error(error);
     $("map-hint").textContent = "Не вдалося завантажити межі областей або районів";
@@ -310,7 +453,7 @@ document.addEventListener("keydown", (event) => { if (event.key === "Escape") cl
 $("reset-map").addEventListener("click", () => {
   if (map && oblastLayer) map.fitBounds(oblastLayer.getBounds(), { padding: [15, 15] });
   activeOblast = null;
-  $("map-hint").textContent = "Натисни на область, щоб відкрити список районів";
+  $("map-hint").textContent = "Наведи курсор на район для погоди · натисни на нього, щоб обрати район";
 });
 window.addEventListener("load", () => {
   if (typeof L === "undefined") {
