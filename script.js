@@ -15,6 +15,8 @@ let selectedOblast = null;
 let hoveredItem = null;
 let hoveredLatLng = null;
 let requestSequence = 0;
+let oblastLabelMarkers = [];
+let panelRequestSequence = 0;
 const weatherCache = new Map();
 const weatherPending = new Map();
 const featureNames = new WeakMap();
@@ -200,16 +202,129 @@ function bindDistrict(feature, layer) {
       hoveredItem = item;
       hoveredLatLng = e.latlng;
       refreshStyles();
-      const seq = ++requestSequence;
-      const name = getName(feature);
-      showTooltip(e.latlng, name, "Завантажуємо погоду…");
-      loadWeather(feature).then(weather => {
-        if (seq === requestSequence && hoveredItem === item && !districtTooltip().hidden) showTooltip(hoveredLatLng || e.latlng, name, weather);
-      });
+      requestSequence++;
+      hideTooltip();
+      void openWeatherPanel(item);
     }
   });
 }
+
+function prettyDistrictName(feature) {
+  let name = getName(feature, "district").replace(/район/ig, "район").trim();
+  if (!/район/i.test(name)) name += " район";
+  return name;
+}
+function addOblastLabels() {
+  const pane = map.createPane("oblastLabelsPane");
+  pane.style.zIndex = 650;
+  pane.style.pointerEvents = "none";
+  oblastLabelMarkers.forEach(marker => map.removeLayer(marker));
+  oblastLabelMarkers = [];
+  for (const feature of oblastFeatures) {
+    const center = centerOf(feature);
+    if (!center) continue;
+    const name = getName(feature, "oblast")
+      .replace(/\s+область$/i, "")
+      .replace(/^м\.\s*/i, "м. ");
+    const icon = L.divIcon({ className: "oblast-label-icon", html: `<div class="oblast-label">${escapeHtml(name)}</div>`, iconSize: [140, 22], iconAnchor: [70, 11] });
+    const marker = L.marker(center, { icon, pane: "oblastLabelsPane", interactive: false, keyboard: false });
+    marker.addTo(map);
+    oblastLabelMarkers.push(marker);
+  }
+}
+function formatDateUk(dateString) {
+  try { return new Date(`${dateString}T12:00:00`).toLocaleDateString("uk-UA", { day: "numeric", month: "short" }); }
+  catch (_) { return dateString; }
+}
+function weatherCondition(code) { return WEATHER_CODES[code] || "Невідомі умови"; }
+async function fetchWeatherAt(lat, lon, includeHistory = true) {
+  const params = new URLSearchParams({ latitude: String(lat), longitude: String(lon), current: "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m", daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max", forecast_days: "4", timezone: "Europe/Kyiv" });
+  const forecastPromise = fetch(`${WEATHER_URL}?${params}`).then(r => { if (!r.ok) throw new Error("Forecast unavailable"); return r.json(); });
+  let historyPromise = Promise.resolve(null);
+  if (includeHistory) {
+    const now = new Date();
+    const end = new Date(now); end.setDate(end.getDate() - 1);
+    const start = new Date(end); start.setDate(start.getDate() - 6);
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const hp = new URLSearchParams({ latitude: String(lat), longitude: String(lon), start_date: fmt(start), end_date: fmt(end), daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum", timezone: "Europe/Kyiv" });
+    historyPromise = fetch(`https://archive-api.open-meteo.com/v1/archive?${hp}`).then(r => r.ok ? r.json() : null).catch(() => null);
+  }
+  const [forecast, history] = await Promise.all([forecastPromise, historyPromise]);
+  return { forecast, history };
+}
+function renderWeatherData(data, target, prefix = "") {
+  if (!data?.forecast?.current) { target.innerHTML = `<p class="muted">Погода: невідомо. Спробуйте ще раз пізніше.</p>`; return; }
+  const c = data.forecast.current, d = data.forecast.daily || {};
+  const temp = Number.isFinite(c.temperature_2m) ? `${Math.round(c.temperature_2m)}°C` : "невідомо";
+  const wind = Number.isFinite(c.wind_speed_10m) ? `${Math.round(c.wind_speed_10m)} км/год` : "невідомо";
+  const feels = Number.isFinite(c.apparent_temperature) ? `${Math.round(c.apparent_temperature)}°C` : "невідомо";
+  const humidity = Number.isFinite(c.relative_humidity_2m) ? `${Math.round(c.relative_humidity_2m)}%` : "невідомо";
+  let html = `<section class="weather-current"><div class="temperature">${temp}</div><div class="condition">${escapeHtml(weatherCondition(c.weather_code))}</div><div class="weather-stats"><div class="weather-stat"><span>Відчувається як</span><strong>${feels}</strong></div><div class="weather-stat"><span>Вітер</span><strong>${wind}</strong></div><div class="weather-stat"><span>Вологість</span><strong>${humidity}</strong></div><div class="weather-stat"><span>Оновлено</span><strong>зараз</strong></div></div></section>`;
+  html += `<h2>Прогноз на 4 дні</h2><div class="history-list">`;
+  if (Array.isArray(d.time)) d.time.forEach((day, i) => { html += `<div class="history-row"><div><div>${escapeHtml(formatDateUk(day))}</div><div class="date">${escapeHtml(weatherCondition(d.weather_code?.[i]))}</div></div><strong>${Number.isFinite(d.temperature_2m_max?.[i]) ? Math.round(d.temperature_2m_max[i]) : "—"}° / ${Number.isFinite(d.temperature_2m_min?.[i]) ? Math.round(d.temperature_2m_min[i]) : "—"}°</strong></div>`; });
+  html += `</div><h2>Історія погоди · 7 днів</h2><div class="history-list">`;
+  const hist = data.history?.daily;
+  if (Array.isArray(hist?.time) && hist.time.length) hist.time.forEach((day, i) => { html += `<div class="history-row"><div><div>${escapeHtml(formatDateUk(day))}</div><div class="date">${escapeHtml(weatherCondition(hist.weather_code?.[i]))}${Number.isFinite(hist.precipitation_sum?.[i]) ? ` · опади ${Math.round(hist.precipitation_sum[i]*10)/10} мм` : ""}</div></div><strong>${Number.isFinite(hist.temperature_2m_max?.[i]) ? Math.round(hist.temperature_2m_max[i]) : "—"}° / ${Number.isFinite(hist.temperature_2m_min?.[i]) ? Math.round(hist.temperature_2m_min[i]) : "—"}°</strong></div>`; });
+  else html += `<p class="muted">Історичні дані зараз недоступні.</p>`;
+  html += `</div>`;
+  target.innerHTML = html;
+}
+const settlementsByDistrict = [
+  { match: /кропивницьк/i, places: [
+    { name: "Знам’янка", lat: 48.713, lon: 32.664 },
+    { name: "Суботці", lat: 48.657, lon: 32.537 },
+    { name: "Аджамка", lat: 48.542, lon: 32.535 }
+  ]}
+];
+function settlementsForDistrict(name) {
+  return settlementsByDistrict.find(item => item.match.test(name))?.places || [];
+}
+async function showSettlementWeather(place, box) {
+  box.hidden = false;
+  box.innerHTML = `<strong>${escapeHtml(place.name)}</strong><p class="muted">Завантаження погоди…</p>`;
+  try {
+    const data = await fetchWeatherAt(place.lat, place.lon, false);
+    if (!data.forecast?.current) throw new Error("no weather");
+    const c = data.forecast.current;
+    box.innerHTML = `<strong>${escapeHtml(place.name)}</strong><div class="temperature" style="font-size:28px;margin-top:6px">${Number.isFinite(c.temperature_2m) ? Math.round(c.temperature_2m)+"°C" : "невідомо"}</div><div>${escapeHtml(weatherCondition(c.weather_code))}</div><p class="small-note">Вітер: ${Number.isFinite(c.wind_speed_10m) ? Math.round(c.wind_speed_10m)+" км/год" : "невідомо"} · Вологість: ${Number.isFinite(c.relative_humidity_2m) ? Math.round(c.relative_humidity_2m)+"%" : "невідомо"}</p>`;
+  } catch (_) { box.innerHTML = `<strong>${escapeHtml(place.name)}</strong><p class="muted">Погода: невідомо</p>`; }
+}
+async function openWeatherPanel(item) {
+  const panel = document.getElementById("weather-panel"), content = document.getElementById("panel-content");
+  const name = prettyDistrictName(item.feature);
+  panel.hidden = false;
+  document.getElementById("panel-title").textContent = name;
+  const seq = ++panelRequestSequence;
+  content.innerHTML = `<p class="muted">Завантаження поточної погоди та історії…</p>`;
+  const center = centerOf(item.feature);
+  const places = settlementsForDistrict(name);
+  let settlementsHtml = `<h2>Населені пункти</h2>`;
+  if (places.length) {
+    settlementsHtml += `<div class="settlement-list">${places.map((place, i) => `<button class="settlement-row" type="button" data-place-index="${i}"><span>${escapeHtml(place.name)}</span><span class="settlement-meta">Показати погоду →</span></button>`).join("")}</div><div id="place-weather" class="place-weather" hidden></div>`;
+  } else {
+    settlementsHtml += `<p class="muted">Список населених пунктів для цього району ще не додано.</p>`;
+  }
+  if (!center) { content.innerHTML = `<p class="muted">Не вдалося визначити координати району.</p>${settlementsHtml}`; return; }
+  try {
+    const data = await fetchWeatherAt(center[0], center[1], true);
+    if (seq !== panelRequestSequence) return;
+    content.innerHTML = `<h2>Поточна погода</h2><div id="district-weather"></div>${settlementsHtml}`;
+    renderWeatherData(data, document.getElementById("district-weather"));
+    content.querySelectorAll("[data-place-index]").forEach(button => button.addEventListener("click", () => {
+      const place = places[Number(button.dataset.placeIndex)];
+      const box = document.getElementById("place-weather");
+      if (place && box) showSettlementWeather(place, box);
+    }));
+  } catch (_) {
+    if (seq !== panelRequestSequence) return;
+    content.innerHTML = `<p class="muted">Не вдалося завантажити погоду. Показуємо «невідомо» для недоступних даних.</p>${settlementsHtml}`;
+    content.querySelectorAll("[data-place-index]").forEach(button => button.addEventListener("click", () => { const place = places[Number(button.dataset.placeIndex)]; const box = document.getElementById("place-weather"); if (place && box) showSettlementWeather(place, box); }));
+  }
+}
+
 function init() {
+  document.getElementById("panel-close").addEventListener("click", () => { document.getElementById("weather-panel").hidden = true; panelRequestSequence++; });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { document.getElementById("weather-panel").hidden = true; panelRequestSequence++; } });
   map = L.map("map", { zoomControl: false, attributionControl: false, scrollWheelZoom: true, doubleClickZoom: true, preferCanvas: false }).setView([48.8, 31.2], 6);
   map.createPane("oblastPane");
   map.getPane("oblastPane").style.zIndex = 390;
@@ -222,6 +337,7 @@ function init() {
     districtItems.forEach(item => { item.oblast = findOblastForDistrict(item.feature); });
     // Boundaries of oblasts are drawn beneath districts; district polygons receive the mouse events.
     L.geoJSON(oblasts, { pane: "oblastPane", interactive: false, style: { color: "#fff", weight: 1.8, opacity: 1, fill: false } }).addTo(map);
+    addOblastLabels();
     const bounds = districtLayer.getBounds();
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [12, 12] });
     document.getElementById("map-loading").hidden = true;

@@ -13,6 +13,13 @@
 <body>
   <main id="map" aria-label="Інтерактивна карта адміністративних меж України"></main>
   <div id="district-tooltip" class="district-tooltip" role="status" aria-live="polite" hidden></div>
+  <aside id="weather-panel" class="weather-panel" aria-labelledby="panel-title" hidden>
+    <header class="panel-header">
+      <div><span class="panel-eyebrow">ПОГОДА РАЙОНУ</span><h1 id="panel-title">Оберіть район</h1></div>
+      <button id="panel-close" class="panel-close" type="button" aria-label="Закрити панель">×</button>
+    </header>
+    <div id="panel-content" class="panel-content"><p class="muted">Завантаження погоди…</p></div>
+  </aside>
   <div id="map-loading" role="status">Завантаження меж карти…</div>
 </body>
 </html>
