@@ -68,3 +68,8 @@ body { font-family: Arial, sans-serif; }
 .whats-new-card li + li { margin-top: 8px; }
 #whats-new-ok { width: 100%; padding: 11px 16px; color: #fff; background: #343b47; border: 1px solid #505969; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
 #whats-new-ok:hover { background: #414a59; }
+
+
+/* WezeraApp title, fixed to the upper-left corner */
+.wezeraapp-title { position: fixed; z-index: 10500; top: 16px; left: 18px; margin: 0; padding: 8px 12px; color: #f4f6f8; background: rgba(0,0,0,.82); border: 1px solid #252b35; border-radius: 6px; font: 700 20px/1 Arial, sans-serif; letter-spacing: .04em; pointer-events: none; }
+@media (max-width: 600px) { .wezeraapp-title { top: 10px; left: 10px; font-size: 17px; padding: 7px 9px; } }
