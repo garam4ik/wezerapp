@@ -13,6 +13,7 @@ let oblastFeatures = [];
 let districtItems = [];
 let selectedOblast = null;
 let hoveredItem = null;
+let hoveredLatLng = null;
 let requestSequence = 0;
 const weatherCache = new Map();
 const weatherPending = new Map();
@@ -85,6 +86,14 @@ function districtSamples(feature) {
   return samples;
 }
 function findOblastForDistrict(feature) {
+  const p = propsOf(feature);
+  const parentKeys = ["oblast", "oblast_name", "region", "region_name", "adm1_name", "NAME_1", "name_1", "admin1Name", "parent_name"];
+  const parentValue = parentKeys.map(k => p[k]).find(v => typeof v === "string" && v.trim());
+  if (parentValue) {
+    const wanted = normalize(parentValue);
+    const byName = oblastFeatures.find(o => normalize(getName(o, "oblast")) === wanted || normalize(getName(o, "oblast")).includes(wanted) || wanted.includes(normalize(getName(o, "oblast"))));
+    if (byName) return byName;
+  }
   const samples = districtSamples(feature);
   if (!samples.length) return null;
   let best = null, bestScore = -1;
@@ -150,41 +159,52 @@ async function loadWeather(feature) {
   return task;
 }
 async function onDistrictEnter(item, latlng) {
-  if (!selectedOblast || item.oblast !== selectedOblast) return;
+  // A hover must work immediately: infer the active oblast from the district if none is selected,
+  // or switch the active oblast when the pointer enters a district in another oblast.
+  if (!item.oblast) item.oblast = findOblastForDistrict(item.feature);
+  if (item.oblast) selectedOblast = item.oblast;
   hoveredItem = item;
+  hoveredLatLng = latlng;
   refreshStyles();
   const seq = ++requestSequence;
   const name = getName(item.feature);
   showTooltip(latlng, name, "Завантажуємо погоду…");
   const weather = await loadWeather(item.feature);
-  if (seq !== requestSequence || hoveredItem !== item || item.oblast !== selectedOblast) return;
+  if (seq !== requestSequence || hoveredItem !== item) return;
   const el = districtTooltip();
-  if (el && !el.hidden) { showTooltip(latlng, name, weather); }
+  if (el && !el.hidden) showTooltip(hoveredLatLng || latlng, name, weather);
 }
 function bindDistrict(feature, layer) {
   const item = { feature, layer, oblast: null };
   districtItems.push(item);
   layer.on({
-    mouseover: e => onDistrictEnter(item, e.latlng),
-    mousemove: e => { if (hoveredItem === item && !districtTooltip().hidden) positionTooltip(e.latlng); },
+    mouseover: e => { void onDistrictEnter(item, e.latlng); },
+    mousemove: e => {
+      if (hoveredItem === item && !districtTooltip().hidden) {
+        hoveredLatLng = e.latlng;
+        positionTooltip(e.latlng);
+      }
+    },
     mouseout: () => {
       if (hoveredItem === item) {
         hoveredItem = null;
+        hoveredLatLng = null;
         requestSequence++;
         hideTooltip();
         refreshStyles();
       }
     },
     click: e => {
-      if (!item.oblast) return;
-      selectedOblast = item.oblast;
+      if (!item.oblast) item.oblast = findOblastForDistrict(feature);
+      if (item.oblast) selectedOblast = item.oblast;
       hoveredItem = item;
+      hoveredLatLng = e.latlng;
       refreshStyles();
       const seq = ++requestSequence;
       const name = getName(feature);
       showTooltip(e.latlng, name, "Завантажуємо погоду…");
       loadWeather(feature).then(weather => {
-        if (seq === requestSequence && hoveredItem === item && selectedOblast === item.oblast && !districtTooltip().hidden) showTooltip(e.latlng, name, weather);
+        if (seq === requestSequence && hoveredItem === item && !districtTooltip().hidden) showTooltip(hoveredLatLng || e.latlng, name, weather);
       });
     }
   });
