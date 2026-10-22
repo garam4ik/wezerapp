@@ -52,11 +52,9 @@ function centerOf(feature) {
   return null;
 }
 const EXCLUDED_OBLAST_NAMES = [
-  "крим", "crimea", "ар крим", "автономна республіка крим", "автономная республика крым",
   "севастополь", "севатополь", "sevastopol",
   "донецька", "донецкая", "donetsk",
-  "луганська", "луганская", "luhansk", "lugansk",
-  // Запорізька та Херсонська області залишаються на карті.
+  // Крим, Луганська, Запорізька та Херсонська області залишаються на карті.
 ];
 function isExcludedOblastName(value) {
   const name = normalize(value);
@@ -134,7 +132,7 @@ function findOblastForDistrict(feature) {
 }
 function isRedOblast(feature) {
   const name = normalize(getName(feature, "oblast"));
-  return ["запорізька", "запорожская", "zaporizhzhia", "zaporizhya", "zaporozhye", "херсонська", "херсонская", "kherson"]
+  return ["запорізька", "запорожская", "zaporizhzhia", "zaporizhya", "zaporozhye", "херсонська", "херсонская", "kherson", "луганська", "луганская", "luhansk", "lugansk", "крим", "crimea", "ар крим", "автономна республіка крим", "автономная республика крым"]
     .some(alias => name.includes(normalize(alias)));
 }
 function baseStyle(feature) {
