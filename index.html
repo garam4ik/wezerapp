@@ -2,64 +2,16 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#080d16">
-  <meta name="description" content="Інтерактивна карта України з межами районів і прогнозом погоди">
-  <title>WezeraApp — Погода України</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>Карта погоди України</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="style.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <script src="script.js" defer></script>
 </head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="#" aria-label="WezeraApp — головна">
-      <span class="brand-mark">W</span><span>wezera<span class="brand-accent">app</span></span>
-    </a>
-    <div class="topbar-right"><span class="live-pill"><i></i> LIVE WEATHER</span><span class="topbar-label">Україна</span></div>
-  </header>
-
-  <main class="page">
-    <section class="intro">
-      <div>
-        <p class="eyebrow">МЕТЕОКАРТА · УКРАЇНА</p>
-        <h1>Погода по районах</h1>
-        <p class="subtitle">Наведи курсор на район, щоб побачити погоду. Натисни на нього, щоб відкрити вибір району.</p>
-      </div>
-      <div class="legend"><span class="legend-line"></span> Межі районів</div>
-    </section>
-
-    <section class="map-shell">
-      <div class="map-toolbar">
-        <div class="map-state"><span class="pulse"></span><span id="map-hint">Наведи курсор на район для погоди · натисни, щоб обрати район</span></div>
-        <button id="reset-map" class="secondary-button" type="button">⌖ Уся Україна</button>
-      </div>
-      <div class="map-wrap"><div id="map" aria-label="Інтерактивна карта України"></div>
-        <div class="map-loading" id="map-loading"><span class="spinner"></span><span>Завантаження карти…</span></div>
-      </div>
-      <div class="map-footer"><span>Межі: адміністративні дані GeoJSON</span><span>Погода: Open-Meteo</span></div>
-    </section>
-
-    <section class="weather-section">
-      <div class="section-title"><div><p class="eyebrow">ПОТОЧНІ УМОВИ</p><h2>Погода в обраному районі</h2></div><span id="updated-at" class="updated-at">Оновлено: —</span></div>
-      <div class="weather-card" id="weather-card">
-        <div class="weather-main">
-          <div class="weather-place"><span class="weather-icon" id="weather-icon">☁️</span><div><p id="selected-region" class="place-label">Область і район не вибрано</p><p id="weather-condition" class="condition">Обери область на карті</p></div></div>
-          <div class="temperature"><span id="temperature">—</span><span class="degrees">°C</span></div>
-          <p class="feels-like">Відчувається як <strong id="feels-like">—</strong></p>
-        </div>
-        <div class="weather-metrics">
-          <div class="metric"><span class="metric-icon">💧</span><span class="metric-label">Вологість</span><strong id="humidity">—</strong></div>
-          <div class="metric"><span class="metric-icon">💨</span><span class="metric-label">Вітер</span><strong id="wind">—</strong></div>
-          <div class="metric"><span class="metric-icon">🌧️</span><span class="metric-label">Опади</span><strong id="precipitation">—</strong></div>
-          <div class="metric"><span class="metric-icon">☁️</span><span class="metric-label">Хмарність</span><strong id="cloud-cover">—</strong></div>
-        </div>
-      </div>
-      <p class="data-note" id="data-note">Після вибору району тут з’являться актуальні дані. Якщо дані недоступні, буде показано «невідомо».</p>
-    </section>
-
-    <footer class="footer"><span>WezeraApp · Погодні дані можуть затримуватися або бути недоступними.</span><a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Джерело погоди: Open-Meteo ↗</a></footer>
-  </main>
-
+  <main id="map" aria-label="Інтерактивна карта адміністративних меж України"></main>
+  <div id="map-loading" role="status">Завантаження меж карти…</div>
 </body>
 </html>
